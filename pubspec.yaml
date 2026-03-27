@@ -17,6 +17,7 @@ dependencies:
   speech_to_text: ^6.5.1
   pattern_input_formatter: ^1.1.0
   share_plus: ^10.1.0 # NUOVO: Permette di inviare file su Telegram, WhatsApp o Email
+  file_picker: ^8.1.2 # NUOVO: Permette di importare i file json
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
