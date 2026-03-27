@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/relazione_provider.dart';
 import 'problematiche_screen.dart';
+import 'gas_traccianti_screen.dart'; // Import aggiunto per la Sezione 3
 
 class DatiCantiereScreen extends StatefulWidget {
   const DatiCantiereScreen({super.key});
@@ -48,7 +49,11 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ProblematicheScreen()));
             }),
-            ListTile(leading: const Icon(Icons.looks_3), title: const Text('3) Localizz. gas tracciante'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.looks_3), title: const Text('3) Localizz. gas tracciante'), onTap: () {
+                // Collegamento funzionante per i Gas Traccianti
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const GasTracciantiScreen()));
+            }),
             ListTile(leading: const Icon(Icons.looks_4), title: const Text('4) Verifiche strumentali'), onTap: () {}),
             ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {}),
             ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {}),
@@ -73,7 +78,6 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Orario Inizio e Fine
             Row(
               children: [
                 Expanded(child: TextFormField(decoration: const InputDecoration(labelText: 'Orario Inizio', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time)))),
@@ -83,7 +87,6 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Tipo Edificio e Referente
             DropdownButtonFormField<String>(value: 'Condominio', items: _tipiEdificio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Tipologia Edificio', border: OutlineInputBorder())),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(value: _titoliReferente.contains(provider.referente) ? provider.referente : 'Sig.', items: _titoliReferente.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) => provider.aggiornaDato(nuovoReferente: val), decoration: const InputDecoration(labelText: 'Referente', border: OutlineInputBorder())),
