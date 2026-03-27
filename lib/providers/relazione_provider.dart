@@ -19,8 +19,9 @@ class RelazioneProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final datiString = prefs.getString('bozza_corrente');
     
-    if (datiString != null) {
+   if (datiString != null) {
       final dati = jsonDecode(datiString);
+      dataSopralluogo = dati['dataSopralluogo'] ?? ''; // NUOVO
       referente = dati['referente'] ?? 'Sig.';
       comune = dati['comune'] ?? '';
       provincia = dati['provincia'] ?? '';
@@ -33,14 +34,20 @@ class RelazioneProvider with ChangeNotifier {
     }
   }
 
-  Future<void> salvaDatiInAutomatico() async {
+ Future<void> salvaDatiInAutomatico() async {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
+      'dataSopralluogo': dataSopralluogo, // NUOVO
       'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
       'problematiche': problematiche,
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
     notifyListeners();
+  }
+
+  void aggiornaData(String nuovaData) {
+    dataSopralluogo = nuovaData;
+    salvaDatiInAutomatico();
   }
 
   void aggiornaDato({String? nuovoReferente, String? nuovoComune, String? nuovaProvincia, String? nuovoCap, String? nuovaVia}) {
