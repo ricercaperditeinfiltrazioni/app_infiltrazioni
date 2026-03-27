@@ -17,54 +17,84 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
   
   int _indiceSelezionato = 0; 
 
-  Future<void> _scattaFoto() async {
+    Future<void> _scattaFoto() async {
     final XFile? foto = await _picker.pickImage(source: ImageSource.camera);
     if (foto == null) return; 
 
     if (!mounted) return;
     String tipologiaSelezionata = 'Infiltrazione';
     String notaInserita = '';
+    
+    // Nuove variabili per le spunte veloci
+    bool infiltrazioneAttiva = false;
+    bool presenzaAcquaPiove = false;
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Dettagli Infiltrazione'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.file(File(foto.path), height: 150),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: tipologiaSelezionata,
-                  items: _tipologie.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (val) => tipologiaSelezionata = val!,
-                  decoration: const InputDecoration(labelText: 'Tipologia problema'),
+        return StatefulBuilder( // StatefulBuilder permette di aggiornare le Checkbox dentro al popup!
+          builder: (context, setStatePopup) {
+            return AlertDialog(
+              title: const Text('Dettagli Infiltrazione'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.file(File(foto.path), height: 150),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: tipologiaSelezionata,
+                      items: _tipologie.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (val) => setStatePopup(() => tipologiaSelezionata = val!),
+                      decoration: const InputDecoration(labelText: 'Tipologia problema'),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // NUOVE SPUNTE VELOCI
+                    CheckboxListTile(
+                      title: const Text("Infiltrazione attiva"),
+                      value: infiltrazioneAttiva,
+                      onChanged: (val) => setStatePopup(() => infiltrazioneAttiva = val!),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    CheckboxListTile(
+                      title: const Text("Presenza d'acqua quando piove"),
+                      value: presenzaAcquaPiove,
+                      onChanged: (val) => setStatePopup(() => presenzaAcquaPiove = val!),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 8),
+
+                    CasellaTestoVocale(
+                      label: 'Note aggiuntive / Stanza',
+                      valoreIniziale: notaInserita,
+                      onChanged: (val) => notaInserita = val,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                // QUI È DOVE ABBIAMO INSERITO LA NUOVA CASELLA VOCALE
-                CasellaTestoVocale(
-                  label: 'Note aggiuntive / Stanza',
-                  valoreIniziale: notaInserita,
-                  onChanged: (val) => notaInserita = val,
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
+                ElevatedButton(
+                  onPressed: () {
+                    // Costruiamo la nota finale unendo le spunte al testo vocale
+                    String notaFinale = notaInserita;
+                    if (infiltrazioneAttiva) notaFinale = "[ATTIVA] $notaFinale";
+                    if (presenzaAcquaPiove) notaFinale = "[PIOVE] $notaFinale";
+
+                    final prov = Provider.of<RelazioneProvider>(context, listen: false);
+                    prov.aggiungiProblematica(foto.path, tipologiaSelezionata, notaFinale);
+                    setState(() { _indiceSelezionato = prov.problematiche.length - 1; }); 
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Salva Foto'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
-            ElevatedButton(
-              onPressed: () {
-                final prov = Provider.of<RelazioneProvider>(context, listen: false);
-                prov.aggiungiProblematica(foto.path, tipologiaSelezionata, notaInserita);
-                setState(() { _indiceSelezionato = prov.problematiche.length - 1; }); 
-                Navigator.pop(context);
-              },
-              child: const Text('Salva Foto'),
-            ),
-          ],
+            );
+          }
         );
       }
     );
