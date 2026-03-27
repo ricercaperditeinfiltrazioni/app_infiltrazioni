@@ -25,7 +25,7 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
     {'comune': 'Padova', 'provincia': 'PD', 'cap': '35100'},
     {'comune': 'Venezia', 'provincia': 'VE', 'cap': '30100'},
     {'comune': 'Treviso', 'provincia': 'TV', 'cap': '31100'},
-    {'comune': 'Rovigo', 'provincia': 'TV', 'cap': '31100'},
+    {'comune': 'Rovigo', 'provincia': 'RO', 'cap': '45100'},
     {'comune': 'Belluno', 'provincia': 'BL', 'cap': '32100'},
     {'comune': 'Bassano del Grappa', 'provincia': 'VI', 'cap': '36061'},
     {'comune': 'Schio', 'provincia': 'VI', 'cap': '36015'},
@@ -50,12 +50,36 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            tooltip: 'Invia Backup (Telegram/WhatsApp)',
-            onPressed: () => provider.esportaBackup(),
+            tooltip: 'Invia Backup',
+            onPressed: () => provider.esportaBackup(), // Attiva il backup!
           )
         ],
       ),
-      drawer: Drawer(/* ... Lasciamo il drawer come prima ... */),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            const DrawerHeader(decoration: BoxDecoration(color: Colors.blueAccent), child: Text('Fasi Sopralluogo', style: TextStyle(color: Colors.white, fontSize: 24))),
+            ListTile(leading: const Icon(Icons.folder), title: const Text('Archivio Sopralluoghi'), onTap: () {}),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.looks_one), title: const Text('1) Dati generali'), onTap: () => Navigator.pop(context)),
+            ListTile(leading: const Icon(Icons.looks_two), title: const Text('2) Aree infiltrazioni'), onTap: () {
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ProblematicheScreen()));
+            }),
+            ListTile(leading: const Icon(Icons.looks_3), title: const Text('3) Localizz. gas tracciante'), onTap: () {
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const GasTracciantiScreen()));
+            }),
+            ListTile(leading: const Icon(Icons.looks_4), title: const Text('4) Verifiche strumentali'), onTap: () {
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificheStrumentaliScreen()));
+            }),
+            ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.looks_3, color: Colors.transparent), title: const Text('7) Cause e Consigli (Note)'), onTap: () {}),
+            const Divider(),
+            ListTile(leading: const Icon(Icons.restaurant), title: const Text('Foto Pranzo/Cena/Hotel'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.picture_as_pdf), title: const Text('Genera PDF / Word'), onTap: () {}),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -113,11 +137,11 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
           ],
         ),
       ),
-      // NUOVA BARRA DI NAVIGAZIONE IN BASSO
+      // BARRA DI NAVIGAZIONE INFERIORE (Avanti/Indietro)
       bottomNavigationBar: BottomNavigationBar(
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.arrow_back), label: 'Precedente', backgroundColor: Colors.transparent),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Menu Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.block, color: Colors.transparent), label: ''), // Vuoto perché non si va indietro dalla prima
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.arrow_forward), label: '2. Infiltrazioni'),
         ],
         selectedItemColor: Colors.blue,
