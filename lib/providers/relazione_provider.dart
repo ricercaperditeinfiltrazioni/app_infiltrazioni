@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:share_plus/share_plus.dart'; // Libreria per il Backup!
 
 class RelazioneProvider with ChangeNotifier {
   String dataSopralluogo = '';
@@ -15,7 +16,7 @@ class RelazioneProvider with ChangeNotifier {
   
   List<Map<String, dynamic>> problematiche = [];
   List<Map<String, dynamic>> fotoGas = []; 
-  List<Map<String, dynamic>> fotoStrumenti = []; // NUOVA LISTA STRUMENTI
+  List<Map<String, dynamic>> fotoStrumenti = []; 
 
   Future<void> caricaDatiSalvati() async {
     final prefs = await SharedPreferences.getInstance();
@@ -42,9 +43,7 @@ class RelazioneProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
       'dataSopralluogo': dataSopralluogo, 'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
-      'problematiche': problematiche,
-      'fotoGas': fotoGas,
-      'fotoStrumenti': fotoStrumenti, // Salva gli strumenti
+      'problematiche': problematiche, 'fotoGas': fotoGas, 'fotoStrumenti': fotoStrumenti,
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
     notifyListeners();
@@ -64,7 +63,6 @@ class RelazioneProvider with ChangeNotifier {
     salvaDatiInAutomatico();
   }
 
-  // --- SEZIONE 2: INFILTRAZIONI ---
   Future<void> aggiungiProblematica(String pathFoto, String tipologia, String nota) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -79,7 +77,6 @@ class RelazioneProvider with ChangeNotifier {
   }
   void impostaCancellata(int index, bool stato) { problematiche[index]['cancellata'] = stato; salvaDatiInAutomatico(); }
 
-  // --- SEZIONE 3: GAS TRACCIANTI ---
   Future<void> aggiungiFotoGas(String pathFoto, String tipologia, String nota) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -94,7 +91,6 @@ class RelazioneProvider with ChangeNotifier {
   }
   void impostaGasCancellata(int index, bool stato) { fotoGas[index]['cancellata'] = stato; salvaDatiInAutomatico(); }
 
-  // --- SEZIONE 4: VERIFICHE STRUMENTALI ---
   Future<void> aggiungiFotoStrumento(String pathFoto, String tipologia, String nota) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -108,4 +104,20 @@ class RelazioneProvider with ChangeNotifier {
     } catch (e) { print(e); }
   }
   void impostaStrumentoCancellata(int index, bool stato) { fotoStrumenti[index]['cancellata'] = stato; salvaDatiInAutomatico(); }
+
+  // NUOVO: FUNZIONE DI BACKUP E CONDIVISIONE
+  Future<void> esportaBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final datiString = prefs.getString('bozza_corrente');
+    
+    if (datiString != null) {
+      final directory = await getTemporaryDirectory();
+      final nomeFile = comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'cantiere';
+      final backupFile = File('${directory.path}/backup_$nomeFile.json');
+      await backupFile.writeAsString(datiString);
+      
+      // Apre finestra Telegram/Whatsapp
+      await Share.shareXFiles([XFile(backupFile.path)], text: 'Backup Cantiere $comune');
+    }
+  }
 }
