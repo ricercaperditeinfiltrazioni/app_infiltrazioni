@@ -16,57 +16,64 @@ class _VerificheStrumentaliScreenState extends State<VerificheStrumentaliScreen>
   final List<String> _tipologie = ['Termocamera', 'Igrometro', 'Gas traccianti', 'Videoispezione', 'Palloncini otturatori', 'Altro'];
   int _indiceSelezionato = 0; 
 
-  Future<void> _scattaFoto(List<String> giornatePossibili) async {
+  Future<void> _scattaFoto(List<String> giornatePossibili, String giornoSalvato) async {
     final XFile? foto = await _picker.pickImage(source: ImageSource.camera);
     if (foto == null) return; 
 
     if (!mounted) return;
     String tipologiaSelezionata = 'Termocamera';
-    String giornoSelezionato = giornatePossibili.first;
+    String giornoSelezionato = giornatePossibili.contains(giornoSalvato) ? giornoSalvato : giornatePossibili.first;
     String notaInserita = '';
 
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Dettagli Verifica Strumentale'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.file(File(foto.path), height: 150),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: giornoSelezionato,
-                  items: giornatePossibili.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (val) => giornoSelezionato = val!,
-                  decoration: const InputDecoration(labelText: 'Giorno rilevamento'),
+        return StatefulBuilder(
+          builder: (context, setStatePopup) {
+            return AlertDialog(
+              title: const Text('Dettagli Verifica Strumentale'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.file(File(foto.path), height: 150),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: giornoSelezionato,
+                      items: giornatePossibili.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (val) {
+                        setStatePopup(() => giornoSelezionato = val!);
+                        Provider.of<RelazioneProvider>(context, listen: false).impostaUltimoGiornoSelezionato(val!);
+                      },
+                      decoration: const InputDecoration(labelText: 'Giorno rilevamento'),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: tipologiaSelezionata,
+                      items: _tipologie.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (val) => setStatePopup(() => tipologiaSelezionata = val!),
+                      decoration: const InputDecoration(labelText: 'Strumento utilizzato'),
+                    ),
+                    const SizedBox(height: 16),
+                    CasellaTestoVocale(label: 'Risultato/Note', valoreIniziale: notaInserita, onChanged: (val) => notaInserita = val),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: tipologiaSelezionata,
-                  items: _tipologie.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (val) => tipologiaSelezionata = val!,
-                  decoration: const InputDecoration(labelText: 'Strumento utilizzato'),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
+                ElevatedButton(
+                  onPressed: () {
+                    final prov = Provider.of<RelazioneProvider>(context, listen: false);
+                    prov.aggiungiFotoStrumento(foto.path, tipologiaSelezionata, notaInserita, giornoSelezionato);
+                    setState(() { _indiceSelezionato = prov.fotoStrumenti.length - 1; }); 
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Salva Indagine'),
                 ),
-                const SizedBox(height: 16),
-                CasellaTestoVocale(label: 'Risultato/Note', valoreIniziale: notaInserita, onChanged: (val) => notaInserita = val),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
-            ElevatedButton(
-              onPressed: () {
-                final prov = Provider.of<RelazioneProvider>(context, listen: false);
-                prov.aggiungiFotoStrumento(foto.path, tipologiaSelezionata, notaInserita, giornoSelezionato);
-                setState(() { _indiceSelezionato = prov.fotoStrumenti.length - 1; }); 
-                Navigator.pop(context);
-              },
-              child: const Text('Salva Indagine'),
-            ),
-          ],
+            );
+          }
         );
       }
     );
@@ -142,7 +149,7 @@ class _VerificheStrumentaliScreenState extends State<VerificheStrumentaliScreen>
               )
             ],
           ),
-      floatingActionButton: FloatingActionButton.extended(onPressed: () => _scattaFoto(giornatePossibili), icon: const Icon(Icons.thermostat), label: const Text('Nuova Indagine')),
+      floatingActionButton: FloatingActionButton.extended(onPressed: () => _scattaFoto(giornatePossibili, provider.ultimoGiornoSelezionato), icon: const Icon(Icons.thermostat), label: const Text('Nuova Indagine')),
       bottomNavigationBar: BottomNavigationBar(
         items: const [BottomNavigationBarItem(icon: Icon(Icons.arrow_back), label: '3. Gas'), BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), BottomNavigationBarItem(icon: Icon(Icons.arrow_forward), label: '5. Ripristini')],
         selectedItemColor: Colors.blue, unselectedItemColor: Colors.grey,
