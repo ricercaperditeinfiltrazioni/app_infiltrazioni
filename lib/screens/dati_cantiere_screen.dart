@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/relazione_provider.dart';
+import 'problematiche_screen.dart';
 
 class DatiCantiereScreen extends StatelessWidget {
   const DatiCantiereScreen({super.key});
@@ -12,6 +13,30 @@ class DatiCantiereScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Dati Cantiere')),
+      // NUOVO: Menu laterale per navigare tra le sezioni
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.blue),
+              child: Text('Sezioni Relazione', style: TextStyle(color: Colors.white, fontSize: 24)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Dati Cantiere'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Problematiche Segnalate'),
+              onTap: () {
+                Navigator.pop(context); // Chiude il menu
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProblematicheScreen()));
+              },
+            ),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
