@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/relazione_provider.dart';
-import 'screens/dati_cantiere_screen.dart';
+import 'screens/archivio_screen.dart'; // ORA PARTE DALL'ARCHIVIO!
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  final relazioneProvider = RelazioneProvider();
-  await relazioneProvider.caricaDatiSalvati();
-
+void main() {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: relazioneProvider),
+        ChangeNotifierProvider(create: (_) => RelazioneProvider()),
       ],
       child: const AppInfiltrazioni(),
     ),
@@ -25,9 +20,11 @@ class AppInfiltrazioni extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sopralluoghi Infiltrazioni',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const DatiCantiereScreen(),
+      title: 'App Infiltrazioni',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const ArchivioScreen(), // HOME CAMBIATA
     );
   }
 }
