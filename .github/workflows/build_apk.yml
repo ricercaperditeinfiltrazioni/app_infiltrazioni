@@ -30,7 +30,13 @@ jobs:
       - run: flutter pub get
       
       # Compila l'APK Android
+           - run: flutter pub get
+
+      - name: Generate App Icon
+        run: flutter pub run flutter_launcher_icons:main
+
       - run: flutter build apk --release
+      
       - name: Carica APK
         uses: actions/upload-artifact@v4
         with:
