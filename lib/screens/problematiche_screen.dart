@@ -13,19 +13,12 @@ class ProblematicheScreen extends StatefulWidget {
 
 class _ProblematicheScreenState extends State<ProblematicheScreen> {
   final ImagePicker _picker = ImagePicker();
-
-  // Le voci richieste da te, in ordine alfabetico
-  final List<String> _tipologie = [
-    'Altro', 'Distacco intonaco', 'Infiltrazione', 'Macchia', 
-    'Muffa', 'Perdita', 'Rigonfiamento', 'Termografia', 'Umidità di risalita'
-  ];
+  final List<String> _tipologie = ['Altro', 'Distacco intonaco', 'Infiltrazione', 'Macchia', 'Muffa', 'Perdita', 'Rigonfiamento', 'Termografia', 'Umidità di risalita'];
 
   Future<void> _scattaFoto() async {
-    // 1. Apre la fotocamera del telefono
     final XFile? foto = await _picker.pickImage(source: ImageSource.camera);
-    if (foto == null) return; // Se l'utente annulla
+    if (foto == null) return; 
 
-    // 2. Mostra un popup per inserire la categoria e la nota per questa foto
     if (!mounted) return;
     String tipologiaSelezionata = 'Infiltrazione';
     String notaInserita = '';
@@ -40,7 +33,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.file(File(foto.path), height: 150), // Anteprima foto scattata
+                Image.file(File(foto.path), height: 150),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: tipologiaSelezionata,
@@ -58,13 +51,9 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text('Annulla')
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
             ElevatedButton(
               onPressed: () {
-                // 3. Salva tutto nel Provider (e quindi in memoria)
                 Provider.of<RelazioneProvider>(context, listen: false)
                     .aggiungiProblematica(foto.path, tipologiaSelezionata, notaInserita);
                 Navigator.pop(context);
@@ -85,20 +74,40 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Problematiche Segnalate')),
       body: list.isEmpty 
-        ? const Center(child: Text('Nessuna foto inserita in questa sezione.\nPremi il tasto in basso per scattare.', textAlign: TextAlign.center))
+        ? const Center(child: Text('Nessuna foto inserita.\nPremi il tasto in basso per scattare.', textAlign: TextAlign.center))
         : ListView.builder(
             itemCount: list.length,
             itemBuilder: (context, index) {
               final item = list[index];
+              final bool isCancellata = item['cancellata'] ?? false;
+
               return Card(
+                color: isCancellata ? Colors.grey.shade300 : Colors.white,
                 margin: const EdgeInsets.all(8.0),
-                child: ListTile(
-                  leading: Image.file(File(item['path']), width: 60, height: 60, fit: BoxFit.cover),
-                  title: Text(item['tipologia'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(item['nota']),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => provider.rimuoviProblematica(index),
+                child: Opacity(
+                  opacity: isCancellata ? 0.4 : 1.0, // Effetto trasparenza!
+                  child: ListTile(
+                    leading: Image.file(File(item['path']), width: 60, height: 60, fit: BoxFit.cover),
+                    title: Text(
+                      isCancellata ? 'CANCELLATA - ${item['tipologia']}' : item['tipologia'], 
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        decoration: isCancellata ? TextDecoration.lineThrough : null, // Riga sopra il testo
+                        color: isCancellata ? Colors.red : Colors.black
+                      )
+                    ),
+                    subtitle: Text(item['nota']),
+                    trailing: isCancellata
+                      ? IconButton(
+                          icon: const Icon(Icons.restore, color: Colors.green),
+                          tooltip: 'Ripristina',
+                          onPressed: () => provider.impostaCancellata(index, false),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          tooltip: 'Elimina',
+                          onPressed: () => provider.impostaCancellata(index, true),
+                        ),
                   ),
                 ),
               );
