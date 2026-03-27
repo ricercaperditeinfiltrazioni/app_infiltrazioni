@@ -14,7 +14,8 @@ class RelazioneProvider with ChangeNotifier {
   String viaCivico = '';
   
   List<Map<String, dynamic>> problematiche = [];
-  List<Map<String, dynamic>> fotoGas = []; // Lista per i gas traccianti
+  List<Map<String, dynamic>> fotoGas = []; 
+  List<Map<String, dynamic>> fotoStrumenti = []; // NUOVA LISTA STRUMENTI
 
   Future<void> caricaDatiSalvati() async {
     final prefs = await SharedPreferences.getInstance();
@@ -29,12 +30,10 @@ class RelazioneProvider with ChangeNotifier {
       cap = dati['cap'] ?? '';
       viaCivico = dati['viaCivico'] ?? '';
       
-      if (dati['problematiche'] != null) {
-        problematiche = List<Map<String, dynamic>>.from(dati['problematiche']);
-      }
-      if (dati['fotoGas'] != null) {
-        fotoGas = List<Map<String, dynamic>>.from(dati['fotoGas']);
-      }
+      if (dati['problematiche'] != null) problematiche = List<Map<String, dynamic>>.from(dati['problematiche']);
+      if (dati['fotoGas'] != null) fotoGas = List<Map<String, dynamic>>.from(dati['fotoGas']);
+      if (dati['fotoStrumenti'] != null) fotoStrumenti = List<Map<String, dynamic>>.from(dati['fotoStrumenti']);
+      
       notifyListeners();
     }
   }
@@ -42,14 +41,10 @@ class RelazioneProvider with ChangeNotifier {
   Future<void> salvaDatiInAutomatico() async {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
-      'dataSopralluogo': dataSopralluogo, 
-      'referente': referente, 
-      'comune': comune, 
-      'provincia': provincia, 
-      'cap': cap, 
-      'viaCivico': viaCivico,
+      'dataSopralluogo': dataSopralluogo, 'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
       'problematiche': problematiche,
       'fotoGas': fotoGas,
+      'fotoStrumenti': fotoStrumenti, // Salva gli strumenti
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
     notifyListeners();
@@ -69,69 +64,48 @@ class RelazioneProvider with ChangeNotifier {
     salvaDatiInAutomatico();
   }
 
-  // GESTIONE SEZIONE: PROBLEMATICHE (INFILTRAZIONI)
+  // --- SEZIONE 2: INFILTRAZIONI ---
   Future<void> aggiungiProblematica(String pathFoto, String tipologia, String nota) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final dataOggi = DateTime.now().toIso8601String().split('T')[0];
-      final nomeCantiere = comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto';
-      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_$nomeCantiere');
-      
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto'}');
       if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
-
-      final estensione = path.extension(pathFoto);
-      final nuovoNomeFile = 'Foto_${DateTime.now().millisecondsSinceEpoch}$estensione';
-      final nuovoPath = '${cartellaCantiere.path}/$nuovoNomeFile';
-
+      final nuovoPath = '${cartellaCantiere.path}/Foto_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
       await File(pathFoto).copy(nuovoPath);
-
-      problematiche.add({
-        'path': nuovoPath,
-        'tipologia': tipologia,
-        'nota': nota,
-        'cancellata': false,
-      });
+      problematiche.add({'path': nuovoPath, 'tipologia': tipologia, 'nota': nota, 'cancellata': false});
       salvaDatiInAutomatico();
-    } catch (e) {
-      print("Errore: $e");
-    }
+    } catch (e) { print(e); }
   }
-  
-  void impostaCancellata(int index, bool stato) {
-    problematiche[index]['cancellata'] = stato;
-    salvaDatiInAutomatico();
-  }
+  void impostaCancellata(int index, bool stato) { problematiche[index]['cancellata'] = stato; salvaDatiInAutomatico(); }
 
-  // GESTIONE SEZIONE: GAS TRACCIANTI
+  // --- SEZIONE 3: GAS TRACCIANTI ---
   Future<void> aggiungiFotoGas(String pathFoto, String tipologia, String nota) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final dataOggi = DateTime.now().toIso8601String().split('T')[0];
-      final nomeCantiere = comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto';
-      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_$nomeCantiere');
-      
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto'}');
       if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
-
-      final estensione = path.extension(pathFoto);
-      final nuovoNomeFile = 'Gas_${DateTime.now().millisecondsSinceEpoch}$estensione';
-      final nuovoPath = '${cartellaCantiere.path}/$nuovoNomeFile';
-
+      final nuovoPath = '${cartellaCantiere.path}/Gas_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
       await File(pathFoto).copy(nuovoPath);
-
-      fotoGas.add({
-        'path': nuovoPath,
-        'tipologia': tipologia,
-        'nota': nota,
-        'cancellata': false,
-      });
+      fotoGas.add({'path': nuovoPath, 'tipologia': tipologia, 'nota': nota, 'cancellata': false});
       salvaDatiInAutomatico();
-    } catch (e) {
-      print("Errore salvataggio foto gas: $e");
-    }
+    } catch (e) { print(e); }
   }
+  void impostaGasCancellata(int index, bool stato) { fotoGas[index]['cancellata'] = stato; salvaDatiInAutomatico(); }
 
-  void impostaGasCancellata(int index, bool stato) {
-    fotoGas[index]['cancellata'] = stato;
-    salvaDatiInAutomatico();
+  // --- SEZIONE 4: VERIFICHE STRUMENTALI ---
+  Future<void> aggiungiFotoStrumento(String pathFoto, String tipologia, String nota) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final dataOggi = DateTime.now().toIso8601String().split('T')[0];
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto'}');
+      if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
+      final nuovoPath = '${cartellaCantiere.path}/Strum_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
+      await File(pathFoto).copy(nuovoPath);
+      fotoStrumenti.add({'path': nuovoPath, 'tipologia': tipologia, 'nota': nota, 'cancellata': false});
+      salvaDatiInAutomatico();
+    } catch (e) { print(e); }
   }
+  void impostaStrumentoCancellata(int index, bool stato) { fotoStrumenti[index]['cancellata'] = stato; salvaDatiInAutomatico(); }
 }
