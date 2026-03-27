@@ -8,6 +8,9 @@ class RelazioneProvider with ChangeNotifier {
   String provincia = '';
   String cap = '';
   String viaCivico = '';
+  
+  // NUOVO: Lista per salvare i dati delle problematiche (percorso foto, tipo, nota)
+  List<Map<String, dynamic>> problematiche = [];
 
   Future<void> caricaDatiSalvati() async {
     final prefs = await SharedPreferences.getInstance();
@@ -20,6 +23,11 @@ class RelazioneProvider with ChangeNotifier {
       provincia = dati['provincia'] ?? '';
       cap = dati['cap'] ?? '';
       viaCivico = dati['viaCivico'] ?? '';
+      
+      // Carica le foto salvate
+      if (dati['problematiche'] != null) {
+        problematiche = List<Map<String, dynamic>>.from(dati['problematiche']);
+      }
       notifyListeners();
     }
   }
@@ -27,7 +35,12 @@ class RelazioneProvider with ChangeNotifier {
   Future<void> salvaDatiInAutomatico() async {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
-      'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
+      'referente': referente,
+      'comune': comune,
+      'provincia': provincia,
+      'cap': cap,
+      'viaCivico': viaCivico,
+      'problematiche': problematiche, // Salva le foto nel JSON
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
     notifyListeners();
@@ -39,6 +52,22 @@ class RelazioneProvider with ChangeNotifier {
     if (nuovaProvincia != null) provincia = nuovaProvincia;
     if (nuovoCap != null) cap = nuovoCap;
     if (nuovaVia != null) viaCivico = nuovaVia;
+    salvaDatiInAutomatico();
+  }
+
+  // NUOVO: Metodo per aggiungere una foto scattata
+  void aggiungiProblematica(String pathFoto, String tipologia, String nota) {
+    problematiche.add({
+      'path': pathFoto,
+      'tipologia': tipologia,
+      'nota': nota,
+    });
+    salvaDatiInAutomatico();
+  }
+  
+  // NUOVO: Metodo per eliminare una foto se sbagliata
+  void rimuoviProblematica(int index) {
+    problematiche.removeAt(index);
     salvaDatiInAutomatico();
   }
 }
