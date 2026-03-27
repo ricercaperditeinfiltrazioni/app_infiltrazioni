@@ -6,6 +6,7 @@ import '../providers/relazione_provider.dart';
 import 'problematiche_screen.dart';
 import 'gas_traccianti_screen.dart'; 
 import 'verifiche_strumentali_screen.dart';
+import 'ripristino_iniezioni_screen.dart'; // Import per la nuova Sezione 5
 
 class DatiCantiereScreen extends StatefulWidget {
   const DatiCantiereScreen({super.key});
@@ -18,7 +19,6 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
   final List<String> _tipiEdificio = ['Condominio', 'Abitazione singola', 'Box auto', 'Edificio Commerciale', 'Edificio Industriale', 'Altro'];
   final List<String> _anniEdificio = List.generate(127, (index) => (2026 - index).toString());
   
-  // Database ristretto al Veneto
   final List<Map<String, String>> _databaseComuni = [
     {'comune': 'Vicenza', 'provincia': 'VI', 'cap': '36100'},
     {'comune': 'Verona', 'provincia': 'VR', 'cap': '37100'},
@@ -49,9 +49,14 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
         title: const Text('1. Dati Generali'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.file_download),
+            tooltip: 'Importa Backup JSON',
+            onPressed: () => provider.importaBackup(), // Tasto per importare
+          ),
+          IconButton(
             icon: const Icon(Icons.share),
-            tooltip: 'Invia Backup',
-            onPressed: () => provider.esportaBackup(), // Attiva il backup!
+            tooltip: 'Invia Backup (Telegram/WhatsApp)',
+            onPressed: () => provider.esportaBackup(), // Tasto per esportare
           )
         ],
       ),
@@ -71,7 +76,9 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
             ListTile(leading: const Icon(Icons.looks_4), title: const Text('4) Verifiche strumentali'), onTap: () {
                 Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificheStrumentaliScreen()));
             }),
-            ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const RipristinoIniezioniScreen())); // Collegamento Sezione 5
+            }),
             ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {}),
             ListTile(leading: const Icon(Icons.looks_3, color: Colors.transparent), title: const Text('7) Cause e Consigli (Note)'), onTap: () {}),
             const Divider(),
@@ -87,7 +94,8 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
             Row(children: [
                 Expanded(child: TextFormField(key: Key(provider.dataSopralluogo), initialValue: provider.dataSopralluogo, decoration: const InputDecoration(labelText: 'Data Inizio', border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today)), onChanged: (val) => provider.aggiornaData(val))),
                 const SizedBox(width: 16),
-                Expanded(child: DropdownButtonFormField<String>(value: '1 Giorno', items: ['Mezza giornata', '1 Giorno', '2 Giorni', '3 Giorni', 'Altro'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Durata', border: OutlineInputBorder()))),
+                // LA DURATA ORA COMANDA QUANTI GIORNI VEDI NELLE FOTO
+                Expanded(child: DropdownButtonFormField<String>(value: provider.durataGiorni, items: ['Mezza giornata', '1 Giorno', '2 Giorni', '3 Giorni', 'Altro'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) => provider.aggiornaDato(nuovaDurata: val), decoration: const InputDecoration(labelText: 'Durata', border: OutlineInputBorder()))),
             ]),
             const SizedBox(height: 16),
             Row(children: [
@@ -120,7 +128,7 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
               },
               displayStringForOption: (option) => option['comune']!,
               onSelected: (Map<String, String> selezione) { provider.aggiornaDato(nuovoComune: selezione['comune'], nuovaProvincia: selezione['provincia'], nuovoCap: selezione['cap']); setState(() {}); },
-              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) { return TextField(controller: controller, focusNode: focusNode, decoration: const InputDecoration(labelText: 'Comune (Solo Veneto per ora)', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovoComune: val)); },
+              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) { return TextField(controller: controller, focusNode: focusNode, decoration: const InputDecoration(labelText: 'Comune (Solo Veneto)', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovoComune: val)); },
             ),
             const SizedBox(height: 16),
             Row(children: [
@@ -137,10 +145,9 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
           ],
         ),
       ),
-      // BARRA DI NAVIGAZIONE INFERIORE (Avanti/Indietro)
       bottomNavigationBar: BottomNavigationBar(
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.block, color: Colors.transparent), label: ''), // Vuoto perché non si va indietro dalla prima
+          BottomNavigationBarItem(icon: Icon(Icons.block, color: Colors.transparent), label: ''), 
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.arrow_forward), label: '2. Infiltrazioni'),
         ],
