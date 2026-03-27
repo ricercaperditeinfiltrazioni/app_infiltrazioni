@@ -25,10 +25,11 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
     String giornoSelezionato = giornatePossibili.contains(giornoSalvato) ? giornoSalvato : giornatePossibili.first;
     String notaInserita = '';
     
+    // Imposta l'editor
     PainterController controller = PainterController();
     controller.thickness = 5.0;
     controller.drawColor = Colors.red;
-    controller.backgroundColor = Colors.transparent;
+    controller.backgroundColor = Colors.transparent; // Lo sfondo deve essere trasparente per far vedere la foto
 
     bool salvato = false;
 
@@ -37,39 +38,53 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
-            title: const Text("Disegna (Trascina il dito)"),
+            title: const Text("Disegna sulla Foto"),
             actions: [
-              IconButton(icon: const Icon(Icons.undo), onPressed: () => controller.undo()),
+              IconButton(icon: const Icon(Icons.undo), onPressed: () => controller.undo()), // Tasto Annulla
               IconButton(
                 icon: const Icon(Icons.check, size: 30),
                 onPressed: () async {
-                  final picture = await controller.finish().toImage();
-                  final byteData = await picture.toByteData(format: dart_ui.ImageByteFormat.png);
+                  // Salva il disegno appena fatto
+                  final picture = controller.finish();
+                  final resImage = await picture.toImage();
+                  final byteData = await resImage.toByteData(format: dart_ui.ImageByteFormat.png);
                   if (byteData != null) {
                     salvato = true;
+                    // Esci dall'editor e porta indietro i bytes
                     Navigator.pop(context, byteData.buffer.asUint8List());
                   }
                 },
               )
             ],
           ),
-          body: Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(image: FileImage(File(fotoOriginale.path)), fit: BoxFit.contain)
-            ),
-            child: Painter(controller), // Qua puoi disegnare!
-          ),
-          bottomNavigationBar: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          body: Stack(
             children: [
-              IconButton(icon: const Icon(Icons.circle, color: Colors.red), onPressed: () => controller.drawColor = Colors.red),
-              IconButton(icon: const Icon(Icons.circle, color: Colors.yellow), onPressed: () => controller.drawColor = Colors.yellow),
-              IconButton(icon: const Icon(Icons.circle, color: Colors.green), onPressed: () => controller.drawColor = Colors.green),
+              // 1. La foto scattata sotto
+              Positioned.fill(
+                child: Image.file(File(fotoOriginale.path), fit: BoxFit.contain),
+              ),
+              // 2. Il livello per disegnare sopra
+              Positioned.fill(
+                child: Painter(controller),
+              ),
             ],
+          ),
+          bottomNavigationBar: BottomAppBar(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(icon: const Icon(Icons.circle, color: Colors.red), onPressed: () => controller.drawColor = Colors.red),
+                IconButton(icon: const Icon(Icons.circle, color: Colors.yellow), onPressed: () => controller.drawColor = Colors.yellow),
+                IconButton(icon: const Icon(Icons.circle, color: Colors.green), onPressed: () => controller.drawColor = Colors.green),
+                IconButton(icon: const Icon(Icons.circle, color: Colors.blue), onPressed: () => controller.drawColor = Colors.blue),
+                IconButton(icon: const Icon(Icons.cleaning_services), onPressed: () => controller.clear(), tooltip: 'Pulisci tutto'),
+              ],
+            ),
           ),
         ),
       )
     ).then((byteImage) async {
+      // Se abbiamo salvato e abbiamo i bytes dell'immagine
       if (salvato && byteImage != null) {
         await showDialog(
           context: context,
@@ -83,7 +98,7 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.memory(byteImage as dynamic, height: 150),
+                        Image.memory(byteImage, height: 150), // Mostra l'anteprima
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: giornoSelezionato,
@@ -104,7 +119,8 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
                     ElevatedButton(
                       onPressed: () {
                         final prov = Provider.of<RelazioneProvider>(context, listen: false);
-                        prov.aggiungiFotoCausaDisegnata(fotoOriginale.path, byteImage as dynamic, notaInserita, giornoSelezionato);
+                        // Il Provider salva i byte assieme alla foto originale!
+                        prov.aggiungiFotoCausaDisegnata(fotoOriginale.path, byteImage, notaInserita, giornoSelezionato);
                         setState(() { _indiceSelezionato = prov.fotoCause.length - 1; }); 
                         Navigator.pop(context);
                       },
@@ -140,7 +156,7 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
             child: CasellaTestoVocale(
               label: 'Scrivi o detta la Relazione Conclusiva...',
               valoreIniziale: provider.noteCauseConsigli,
-              maxLines: 8,
+              maxLines: 6,
               onChanged: (val) => provider.aggiornaNoteCause(val),
             ),
           ),
@@ -160,7 +176,13 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(child: Opacity(opacity: (list[_indiceSelezionato]['cancellata'] ?? false) ? 0.3 : 1.0, child: Image.file(File(list[_indiceSelezionato]['path_disegnato']), fit: BoxFit.contain))),
+                              Expanded(
+                                child: Opacity(
+                                  opacity: (list[_indiceSelezionato]['cancellata'] ?? false) ? 0.3 : 1.0, 
+                                  // Mostra l'immagine col disegno salvato!
+                                  child: Image.file(File(list[_indiceSelezionato]['path_disegnato']), fit: BoxFit.contain)
+                                )
+                              ),
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Row(
@@ -208,7 +230,11 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(onPressed: () => _scattaEDisegna(giornatePossibili, provider.ultimoGiornoSelezionato), icon: const Icon(Icons.brush), label: const Text('Disegna su Foto')),
       bottomNavigationBar: BottomNavigationBar(
-        items: const [BottomNavigationBarItem(icon: Icon(Icons.arrow_back), label: '6. Vulnerab.'), BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Fine')],
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.arrow_back), label: '6. Vulnerab.'), 
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), 
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Fine')
+        ],
         selectedItemColor: Colors.green, unselectedItemColor: Colors.grey,
         onTap: (index) {
           if (index == 0) Navigator.pop(context);
