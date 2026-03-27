@@ -9,6 +9,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 
 class RelazioneProvider with ChangeNotifier {
+  // ID UNIVOCO DEL CANTIERE ATTUALE
+  String cantiereId = '';
+
   String dataSopralluogo = '';
   String durataGiorni = '1 Giorno'; 
   String ultimoGiornoSelezionato = 'Giorno 1';
@@ -17,21 +20,32 @@ class RelazioneProvider with ChangeNotifier {
   String provincia = '';
   String cap = '';
   String viaCivico = '';
-  
-  // SEZIONE 7
   String noteCauseConsigli = ''; 
-  List<Map<String, dynamic>> fotoCause = []; // Conterrà percorso originale e percorso disegnato
   
+  List<Map<String, dynamic>> fotoCause = []; 
   List<Map<String, dynamic>> problematiche = [];
   List<Map<String, dynamic>> fotoGas = []; 
   List<Map<String, dynamic>> fotoStrumenti = []; 
   List<Map<String, dynamic>> fotoRipristini = []; 
   List<Map<String, dynamic>> fotoVulnerabilita = []; 
 
-  Future<void> caricaDatiSalvati() async {
-    final prefs = await SharedPreferences.getInstance();
-    final datiString = prefs.getString('bozza_corrente');
-    if (datiString != null) _applicaJson(datiString);
+  // Crea un nuovo cantiere vuoto
+  void nuovoCantiere() {
+    cantiereId = DateTime.now().millisecondsSinceEpoch.toString(); // ID Unico
+    dataSopralluogo = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}";
+    durataGiorni = '1 Giorno';
+    ultimoGiornoSelezionato = 'Giorno 1';
+    referente = 'Sig.';
+    comune = ''; provincia = ''; cap = ''; viaCivico = ''; noteCauseConsigli = '';
+    fotoCause = []; problematiche = []; fotoGas = []; fotoStrumenti = []; fotoRipristini = []; fotoVulnerabilita = [];
+    salvaDatiInAutomatico();
+    notifyListeners();
+  }
+
+  // Carica un cantiere specifico dall'archivio
+  Future<void> apriCantiere(String idCantiere, String jsonString) async {
+    cantiereId = idCantiere;
+    _applicaJson(jsonString);
   }
 
   void _applicaJson(String jsonString) {
@@ -55,17 +69,31 @@ class RelazioneProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Salva il cantiere non più come bozza, ma nel suo "cassetto" specifico
   Future<void> salvaDatiInAutomatico() async {
+    if (cantiereId.isEmpty) return; // Sicurezza
+
     final prefs = await SharedPreferences.getInstance();
     final dati = {
+      'cantiereId': cantiereId,
       'dataSopralluogo': dataSopralluogo, 'durataGiorni': durataGiorni, 'ultimoGiornoSelezionato': ultimoGiornoSelezionato,
       'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico, 'noteCauseConsigli': noteCauseConsigli,
       'problematiche': problematiche, 'fotoGas': fotoGas, 'fotoStrumenti': fotoStrumenti, 'fotoRipristini': fotoRipristini, 'fotoVulnerabilita': fotoVulnerabilita, 'fotoCause': fotoCause
     };
-    await prefs.setString('bozza_corrente', jsonEncode(dati));
+    
+    // Aggiorna l'elenco generale dei cantieri
+    List<String> listaCantieri = prefs.getStringList('lista_cantieri') ?? [];
+    if (!listaCantieri.contains(cantiereId)) {
+      listaCantieri.add(cantiereId);
+      await prefs.setStringList('lista_cantieri', listaCantieri);
+    }
+    
+    // Salva i dati veri e propri
+    await prefs.setString('cantiere_$cantiereId', jsonEncode(dati));
     notifyListeners();
   }
 
+  // TUTTE LE ALTRE FUNZIONI IDENTICHE A PRIMA
   void aggiornaDato({String? nuovoReferente, String? nuovoComune, String? nuovaProvincia, String? nuovoCap, String? nuovaVia, String? nuovaDurata}) {
     if (nuovoReferente != null) referente = nuovoReferente;
     if (nuovoComune != null) comune = nuovoComune;
@@ -77,19 +105,14 @@ class RelazioneProvider with ChangeNotifier {
   }
 
   void aggiornaData(String nuovaData) { dataSopralluogo = nuovaData; salvaDatiInAutomatico(); }
-  
   void aggiornaNoteCause(String note) { noteCauseConsigli = note; salvaDatiInAutomatico(); }
-  
-  void impostaUltimoGiornoSelezionato(String giorno) {
-    ultimoGiornoSelezionato = giorno;
-    salvaDatiInAutomatico();
-  }
+  void impostaUltimoGiornoSelezionato(String giorno) { ultimoGiornoSelezionato = giorno; salvaDatiInAutomatico(); }
 
   Future<void> _salvaFotoGenerico(String pathFoto, String tipologia, String nota, String giorno, List<Map<String, dynamic>> listaDestinazione, String prefisso) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final dataOggi = DateTime.now().toIso8601String().split('T')[0];
-      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto'}');
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId}');
       if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
       final nuovoPath = '${cartellaCantiere.path}/${prefisso}_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
       await File(pathFoto).copy(nuovoPath);
@@ -98,31 +121,19 @@ class RelazioneProvider with ChangeNotifier {
     } catch (e) { print(e); }
   }
 
-  // NUOVO: Salva sia l'originale che l'immagine con i disegni
   Future<void> aggiungiFotoCausaDisegnata(String pathOriginale, Uint8List byteDisegnati, String nota, String giorno) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final dataOggi = DateTime.now().toIso8601String().split('T')[0];
-      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto'}');
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId}');
       if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
-      
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final pathOrigSalvato = '${cartellaCantiere.path}/CauseOrig_${timestamp}${path.extension(pathOriginale)}';
       final pathDisegnato = '${cartellaCantiere.path}/CauseDisegno_${timestamp}.png';
-      
-      // Salva originale
       await File(pathOriginale).copy(pathOrigSalvato);
-      // Salva disegnata
       final fileDisegnato = File(pathDisegnato);
       await fileDisegnato.writeAsBytes(byteDisegnati);
-
-      fotoCause.add({
-        'path_originale': pathOrigSalvato,
-        'path_disegnato': pathDisegnato,
-        'nota': nota,
-        'giorno': giorno,
-        'cancellata': false
-      });
+      fotoCause.add({'path_originale': pathOrigSalvato, 'path_disegnato': pathDisegnato, 'nota': nota, 'giorno': giorno, 'cancellata': false});
       salvaDatiInAutomatico();
     } catch (e) { print(e); }
   }
@@ -137,10 +148,11 @@ class RelazioneProvider with ChangeNotifier {
 
   Future<void> esportaBackup() async {
     final prefs = await SharedPreferences.getInstance();
-    final datiString = prefs.getString('bozza_corrente');
+    final datiString = prefs.getString('cantiere_$cantiereId');
     if (datiString != null) {
       final directory = await getTemporaryDirectory();
-      final backupFile = File('${directory.path}/backup_${comune}.json');
+      final nomeFile = comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId;
+      final backupFile = File('${directory.path}/backup_$nomeFile.json');
       await backupFile.writeAsString(datiString);
       await Share.shareXFiles([XFile(backupFile.path)], text: 'Backup Cantiere $comune');
     }
@@ -151,6 +163,8 @@ class RelazioneProvider with ChangeNotifier {
     if (result != null) {
       File file = File(result.files.single.path!);
       String contenuto = await file.readAsString();
+      // Importando un backup, creiamo un nuovo ID per non sovrascrivere quello aperto
+      cantiereId = DateTime.now().millisecondsSinceEpoch.toString();
       _applicaJson(contenuto);
       salvaDatiInAutomatico();
     }
