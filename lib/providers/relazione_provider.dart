@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,12 +11,16 @@ import 'package:file_picker/file_picker.dart';
 class RelazioneProvider with ChangeNotifier {
   String dataSopralluogo = '';
   String durataGiorni = '1 Giorno'; 
-  String ultimoGiornoSelezionato = 'Giorno 1'; // NUOVO: Memoria del giorno
+  String ultimoGiornoSelezionato = 'Giorno 1';
   String referente = 'Sig.';
   String comune = '';
   String provincia = '';
   String cap = '';
   String viaCivico = '';
+  
+  // SEZIONE 7
+  String noteCauseConsigli = ''; 
+  List<Map<String, dynamic>> fotoCause = []; // Conterrà percorso originale e percorso disegnato
   
   List<Map<String, dynamic>> problematiche = [];
   List<Map<String, dynamic>> fotoGas = []; 
@@ -39,12 +44,14 @@ class RelazioneProvider with ChangeNotifier {
     provincia = dati['provincia'] ?? '';
     cap = dati['cap'] ?? '';
     viaCivico = dati['viaCivico'] ?? '';
+    noteCauseConsigli = dati['noteCauseConsigli'] ?? '';
     
     if (dati['problematiche'] != null) problematiche = List<Map<String, dynamic>>.from(dati['problematiche']);
     if (dati['fotoGas'] != null) fotoGas = List<Map<String, dynamic>>.from(dati['fotoGas']);
     if (dati['fotoStrumenti'] != null) fotoStrumenti = List<Map<String, dynamic>>.from(dati['fotoStrumenti']);
     if (dati['fotoRipristini'] != null) fotoRipristini = List<Map<String, dynamic>>.from(dati['fotoRipristini']);
     if (dati['fotoVulnerabilita'] != null) fotoVulnerabilita = List<Map<String, dynamic>>.from(dati['fotoVulnerabilita']);
+    if (dati['fotoCause'] != null) fotoCause = List<Map<String, dynamic>>.from(dati['fotoCause']);
     notifyListeners();
   }
 
@@ -52,8 +59,8 @@ class RelazioneProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
       'dataSopralluogo': dataSopralluogo, 'durataGiorni': durataGiorni, 'ultimoGiornoSelezionato': ultimoGiornoSelezionato,
-      'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
-      'problematiche': problematiche, 'fotoGas': fotoGas, 'fotoStrumenti': fotoStrumenti, 'fotoRipristini': fotoRipristini, 'fotoVulnerabilita': fotoVulnerabilita
+      'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico, 'noteCauseConsigli': noteCauseConsigli,
+      'problematiche': problematiche, 'fotoGas': fotoGas, 'fotoStrumenti': fotoStrumenti, 'fotoRipristini': fotoRipristini, 'fotoVulnerabilita': fotoVulnerabilita, 'fotoCause': fotoCause
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
     notifyListeners();
@@ -71,7 +78,8 @@ class RelazioneProvider with ChangeNotifier {
 
   void aggiornaData(String nuovaData) { dataSopralluogo = nuovaData; salvaDatiInAutomatico(); }
   
-  // NUOVO: Salva in memoria l'ultimo giorno usato
+  void aggiornaNoteCause(String note) { noteCauseConsigli = note; salvaDatiInAutomatico(); }
+  
   void impostaUltimoGiornoSelezionato(String giorno) {
     ultimoGiornoSelezionato = giorno;
     salvaDatiInAutomatico();
@@ -86,6 +94,35 @@ class RelazioneProvider with ChangeNotifier {
       final nuovoPath = '${cartellaCantiere.path}/${prefisso}_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
       await File(pathFoto).copy(nuovoPath);
       listaDestinazione.add({'path': nuovoPath, 'tipologia': tipologia, 'nota': nota, 'giorno': giorno, 'cancellata': false});
+      salvaDatiInAutomatico();
+    } catch (e) { print(e); }
+  }
+
+  // NUOVO: Salva sia l'originale che l'immagine con i disegni
+  Future<void> aggiungiFotoCausaDisegnata(String pathOriginale, Uint8List byteDisegnati, String nota, String giorno) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final dataOggi = DateTime.now().toIso8601String().split('T')[0];
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto'}');
+      if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
+      
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final pathOrigSalvato = '${cartellaCantiere.path}/CauseOrig_${timestamp}${path.extension(pathOriginale)}';
+      final pathDisegnato = '${cartellaCantiere.path}/CauseDisegno_${timestamp}.png';
+      
+      // Salva originale
+      await File(pathOriginale).copy(pathOrigSalvato);
+      // Salva disegnata
+      final fileDisegnato = File(pathDisegnato);
+      await fileDisegnato.writeAsBytes(byteDisegnati);
+
+      fotoCause.add({
+        'path_originale': pathOrigSalvato,
+        'path_disegnato': pathDisegnato,
+        'nota': nota,
+        'giorno': giorno,
+        'cancellata': false
+      });
       salvaDatiInAutomatico();
     } catch (e) { print(e); }
   }
