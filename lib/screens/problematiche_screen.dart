@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../widgets/casella_testo_vocale.dart';
 import '../providers/relazione_provider.dart';
 
 class ProblematicheScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<String> _tipologie = ['Altro', 'Distacco intonaco', 'Infiltrazione', 'Macchia', 'Muffa', 'Perdita', 'Rigonfiamento', 'Termografia', 'Umidità di risalita'];
   
-  int _indiceSelezionato = 0; // Tiene traccia di quale foto è al centro grande
+  int _indiceSelezionato = 0; 
 
   Future<void> _scattaFoto() async {
     final XFile? foto = await _picker.pickImage(source: ImageSource.camera);
@@ -43,9 +44,10 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
                   decoration: const InputDecoration(labelText: 'Tipologia problema'),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Note aggiuntive / Stanza', border: OutlineInputBorder()),
-                  maxLines: 3,
+                // QUI È DOVE ABBIAMO INSERITO LA NUOVA CASELLA VOCALE
+                CasellaTestoVocale(
+                  label: 'Note aggiuntive / Stanza',
+                  valoreIniziale: notaInserita,
                   onChanged: (val) => notaInserita = val,
                 ),
               ],
@@ -57,7 +59,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
               onPressed: () {
                 final prov = Provider.of<RelazioneProvider>(context, listen: false);
                 prov.aggiungiProblematica(foto.path, tipologiaSelezionata, notaInserita);
-                setState(() { _indiceSelezionato = prov.problematiche.length - 1; }); // Mostra l'ultima foto scattata
+                setState(() { _indiceSelezionato = prov.problematiche.length - 1; }); 
                 Navigator.pop(context);
               },
               child: const Text('Salva Foto'),
@@ -73,7 +75,6 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
     final provider = Provider.of<RelazioneProvider>(context);
     final list = provider.problematiche;
     
-    // Sicurezza se elimino foto e l'indice sfora
     if (_indiceSelezionato >= list.length && list.isNotEmpty) {
       _indiceSelezionato = list.length - 1;
     }
@@ -84,7 +85,6 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
         ? const Center(child: Text('Nessuna foto inserita.\nPremi il tasto in basso per scattare.', textAlign: TextAlign.center))
         : Column(
             children: [
-              // PARTE SUPERIORE: FOTO GRANDE
               Expanded(
                 flex: 3,
                 child: Padding(
@@ -129,8 +129,6 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
                   ),
                 ),
               ),
-              
-              // PARTE INFERIORE: RULLINO FOTO (Slider orizzontale)
               SizedBox(
                 height: 100,
                 child: ListView.builder(
