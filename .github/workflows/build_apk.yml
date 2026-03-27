@@ -1,63 +1,71 @@
 name: Build Flutter APK and Web
+
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-# Aggiungiamo i permessi per poter pubblicare la pagina web
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: "zulu"
-          java-version: "17"
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      
-      # Abilita il supporto web in Flutter
-      - run: flutter config --enable-web
-      - run: flutter create . --platforms=android,web
-      - run: flutter pub get
-      
-      # Compila l'APK Android
-           - run: flutter pub get
+    - name: Scarica il codice
+      uses: actions/checkout@v4
 
-      - name: Generate App Icon
-        run: flutter pub run flutter_launcher_icons:main
+    - name: Imposta Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
 
-      - run: flutter build apk --release
-      
-      - name: Carica APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-infiltrazioni-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+    - name: Installa Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
 
-      # Compila la versione Web
-      - run: flutter build web --release --base-href "/app_infiltrazioni/"
-      - name: Carica Web App
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
+    - name: Abilita il supporto web in Flutter
+      run: flutter config --enable-web
 
-  # Pubblica la versione web su un link pubblico
+    - name: Crea piattaforme
+      run: flutter create . --platforms=android,web
+
+    - name: Ottieni pacchetti pub
+      run: flutter pub get
+
+    - name: Genera Icona Personalizzata
+      run: flutter pub run flutter_launcher_icons:main
+
+    - name: Compila APK Android
+      run: flutter build apk --release
+
+    - name: Carica APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-infiltrazioni-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Compila la versione Web
+      run: flutter build web --release --base-href "/app_infiltrazioni/"
+
+    - name: Carica Web App
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: build/web
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    - name: Deploy su GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
