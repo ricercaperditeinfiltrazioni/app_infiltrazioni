@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../widgets/casella_testo_vocale.dart';
 import '../providers/relazione_provider.dart';
-import 'gas_traccianti_screen.dart'; // Import necessario per andare avanti
+import 'gas_traccianti_screen.dart'; 
 
 class ProblematicheScreen extends StatefulWidget {
   const ProblematicheScreen({super.key});
@@ -205,7 +205,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
           if (index == 0) {
             Navigator.pop(context); // Torna alla pagina 1
           } else if (index == 1) {
-            Navigator.of(context).popUntil((route) => route.isFirst); // Torna alla primissima pagina (Home)
+            Navigator.of(context).popUntil((route) => route.isFirst); // Torna alla home
           } else if (index == 2) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GasTracciantiScreen())); // Va alla pagina 3
           }
