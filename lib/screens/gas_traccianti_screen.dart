@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../widgets/casella_testo_vocale.dart';
+import '../widgets/casella_testo_vocale.dart'; 
 import '../providers/relazione_provider.dart';
 
 class GasTracciantiScreen extends StatefulWidget {
