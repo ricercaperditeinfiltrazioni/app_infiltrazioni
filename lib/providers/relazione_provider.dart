@@ -5,11 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
-import 'package:file_picker/file_picker.dart'; // Importazione file
+import 'package:file_picker/file_picker.dart';
 
 class RelazioneProvider with ChangeNotifier {
   String dataSopralluogo = '';
-  String durataGiorni = '1 Giorno'; // NUOVA
+  String durataGiorni = '1 Giorno'; 
+  String ultimoGiornoSelezionato = 'Giorno 1'; // NUOVO: Memoria del giorno
   String referente = 'Sig.';
   String comune = '';
   String provincia = '';
@@ -19,8 +20,8 @@ class RelazioneProvider with ChangeNotifier {
   List<Map<String, dynamic>> problematiche = [];
   List<Map<String, dynamic>> fotoGas = []; 
   List<Map<String, dynamic>> fotoStrumenti = []; 
-  List<Map<String, dynamic>> fotoRipristini = []; // SEZIONE 5
-  List<Map<String, dynamic>> fotoVulnerabilita = []; // SEZIONE 6
+  List<Map<String, dynamic>> fotoRipristini = []; 
+  List<Map<String, dynamic>> fotoVulnerabilita = []; 
 
   Future<void> caricaDatiSalvati() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,6 +33,7 @@ class RelazioneProvider with ChangeNotifier {
     final dati = jsonDecode(jsonString);
     dataSopralluogo = dati['dataSopralluogo'] ?? '';
     durataGiorni = dati['durataGiorni'] ?? '1 Giorno';
+    ultimoGiornoSelezionato = dati['ultimoGiornoSelezionato'] ?? 'Giorno 1';
     referente = dati['referente'] ?? 'Sig.';
     comune = dati['comune'] ?? '';
     provincia = dati['provincia'] ?? '';
@@ -49,7 +51,8 @@ class RelazioneProvider with ChangeNotifier {
   Future<void> salvaDatiInAutomatico() async {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
-      'dataSopralluogo': dataSopralluogo, 'durataGiorni': durataGiorni, 'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
+      'dataSopralluogo': dataSopralluogo, 'durataGiorni': durataGiorni, 'ultimoGiornoSelezionato': ultimoGiornoSelezionato,
+      'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
       'problematiche': problematiche, 'fotoGas': fotoGas, 'fotoStrumenti': fotoStrumenti, 'fotoRipristini': fotoRipristini, 'fotoVulnerabilita': fotoVulnerabilita
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
@@ -67,8 +70,13 @@ class RelazioneProvider with ChangeNotifier {
   }
 
   void aggiornaData(String nuovaData) { dataSopralluogo = nuovaData; salvaDatiInAutomatico(); }
+  
+  // NUOVO: Salva in memoria l'ultimo giorno usato
+  void impostaUltimoGiornoSelezionato(String giorno) {
+    ultimoGiornoSelezionato = giorno;
+    salvaDatiInAutomatico();
+  }
 
-  // METODO GENERICO PER SALVARE FOTO NELLE VARIE LISTE E AGGIUNGERE IL "GIORNO"
   Future<void> _salvaFotoGenerico(String pathFoto, String tipologia, String nota, String giorno, List<Map<String, dynamic>> listaDestinazione, String prefisso) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -85,8 +93,8 @@ class RelazioneProvider with ChangeNotifier {
   Future<void> aggiungiProblematica(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, problematiche, 'Foto');
   Future<void> aggiungiFotoGas(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, fotoGas, 'Gas');
   Future<void> aggiungiFotoStrumento(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, fotoStrumenti, 'Strum');
-  Future<void> aggiungiFotoRipristino(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, fotoRipristini, 'Ripr'); // NUOVO
-  Future<void> aggiungiFotoVulnerabilita(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, fotoVulnerabilita, 'Vuln'); // NUOVO
+  Future<void> aggiungiFotoRipristino(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, fotoRipristini, 'Ripr');
+  Future<void> aggiungiFotoVulnerabilita(String p, String t, String n, String g) => _salvaFotoGenerico(p, t, n, g, fotoVulnerabilita, 'Vuln'); 
 
   void impostaCancellata(int i, bool s, List<Map<String, dynamic>> l) { l[i]['cancellata'] = s; salvaDatiInAutomatico(); }
 
@@ -101,7 +109,6 @@ class RelazioneProvider with ChangeNotifier {
     }
   }
 
-  // NUOVO: IMPORTAZIONE BACKUP
   Future<void> importaBackup() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
     if (result != null) {
