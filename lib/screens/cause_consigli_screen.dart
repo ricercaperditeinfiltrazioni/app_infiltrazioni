@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:image_painter/image_painter.dart';
+import 'package:painter/painter.dart';
 import '../widgets/casella_testo_vocale.dart';
 import '../providers/relazione_provider.dart';
 
@@ -24,8 +24,11 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
     String giornoSelezionato = giornatePossibili.contains(giornoSalvato) ? giornoSalvato : giornatePossibili.first;
     String notaInserita = '';
     
-    // Apri l'editor per disegnare sulla foto
-    final imageKey = GlobalKey<ImagePainterState>();
+    PainterController controller = PainterController();
+    controller.thickness = 5.0;
+    controller.drawColor = Colors.red;
+    controller.backgroundColor = Colors.transparent;
+
     bool salvato = false;
 
     await Navigator.push(
@@ -33,32 +36,40 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
-            title: const Text("Disegna sulla foto"),
+            title: const Text("Disegna (Trascina il dito)"),
             actions: [
+              IconButton(icon: const Icon(Icons.undo), onPressed: () => controller.undo()),
               IconButton(
                 icon: const Icon(Icons.check, size: 30),
                 onPressed: () async {
-                  final byteDisegnati = await imageKey.currentState?.exportImage();
-                  if (byteDisegnati != null) {
+                  final picture = await controller.finish().toImage();
+                  final byteData = await picture.toByteData(format: dart_ui.ImageByteFormat.png);
+                  if (byteData != null) {
                     salvato = true;
-                    Navigator.pop(context, byteDisegnati);
+                    Navigator.pop(context, byteData.buffer.asUint8List());
                   }
                 },
               )
             ],
           ),
-          body: ImagePainter.file(
-            File(fotoOriginale.path),
-            key: imageKey,
-            scalable: true, // Permette di zoomare per essere precisi!
-            colors: const [Colors.red, Colors.yellow, Colors.green, Colors.blue], // Colori
-            initialPaintMode: PaintMode.freeStyle, // Parte a mano libera, poi scegli cerchi, frecce ecc
+          body: Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(image: FileImage(File(fotoOriginale.path)), fit: BoxFit.contain)
+            ),
+            child: Painter(controller), // Qua puoi disegnare!
+          ),
+          bottomNavigationBar: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(icon: const Icon(Icons.circle, color: Colors.red), onPressed: () => controller.drawColor = Colors.red),
+              IconButton(icon: const Icon(Icons.circle, color: Colors.yellow), onPressed: () => controller.drawColor = Colors.yellow),
+              IconButton(icon: const Icon(Icons.circle, color: Colors.green), onPressed: () => controller.drawColor = Colors.green),
+            ],
           ),
         ),
       )
     ).then((byteImage) async {
       if (salvato && byteImage != null) {
-        // Dopo aver disegnato, chiediamo i dettagli della foto
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -71,7 +82,7 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.memory(byteImage, height: 150),
+                        Image.memory(byteImage as dynamic, height: 150),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: giornoSelezionato,
@@ -92,7 +103,7 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
                     ElevatedButton(
                       onPressed: () {
                         final prov = Provider.of<RelazioneProvider>(context, listen: false);
-                        prov.aggiungiFotoCausaDisegnata(fotoOriginale.path, byteImage, notaInserita, giornoSelezionato);
+                        prov.aggiungiFotoCausaDisegnata(fotoOriginale.path, byteImage as dynamic, notaInserita, giornoSelezionato);
                         setState(() { _indiceSelezionato = prov.fotoCause.length - 1; }); 
                         Navigator.pop(context);
                       },
@@ -112,7 +123,6 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<RelazioneProvider>(context);
     final list = provider.fotoCause;
-    
     int numGiorni = 1;
     if (provider.durataGiorni.contains('2')) numGiorni = 2;
     if (provider.durataGiorni.contains('3')) numGiorni = 3;
@@ -124,19 +134,17 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
       appBar: AppBar(title: const Text('7. Cause e Consigli')),
       body: Column(
         children: [
-          // IL GRANDE CAMPO DI TESTO PER LA RELAZIONE FINALE
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CasellaTestoVocale(
-              label: 'Scrivi o detta la Relazione Conclusiva / Cause...',
+              label: 'Scrivi o detta la Relazione Conclusiva...',
               valoreIniziale: provider.noteCauseConsigli,
-              maxLines: 8, // Molto grande per scrivere tanto
+              maxLines: 8,
               onChanged: (val) => provider.aggiornaNoteCause(val),
             ),
           ),
           const Divider(),
           const Text("Foto Dimostrative Finali (con disegni)", style: TextStyle(fontWeight: FontWeight.bold)),
-          
           Expanded(
             child: list.isEmpty 
               ? const Center(child: Text('Nessuna foto dimostrativa.\nPremi il tasto in basso.', textAlign: TextAlign.center))
@@ -151,7 +159,6 @@ class _CauseConsigliScreenState extends State<CauseConsigliScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Mostra la foto DISEGNATA
                               Expanded(child: Opacity(opacity: (list[_indiceSelezionato]['cancellata'] ?? false) ? 0.3 : 1.0, child: Image.file(File(list[_indiceSelezionato]['path_disegnato']), fit: BoxFit.contain))),
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
