@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class RelazioneProvider with ChangeNotifier {
   String referente = 'Sig.';
@@ -9,7 +12,6 @@ class RelazioneProvider with ChangeNotifier {
   String cap = '';
   String viaCivico = '';
   
-  // NUOVO: Lista per salvare i dati delle problematiche (percorso foto, tipo, nota)
   List<Map<String, dynamic>> problematiche = [];
 
   Future<void> caricaDatiSalvati() async {
@@ -23,8 +25,6 @@ class RelazioneProvider with ChangeNotifier {
       provincia = dati['provincia'] ?? '';
       cap = dati['cap'] ?? '';
       viaCivico = dati['viaCivico'] ?? '';
-      
-      // Carica le foto salvate
       if (dati['problematiche'] != null) {
         problematiche = List<Map<String, dynamic>>.from(dati['problematiche']);
       }
@@ -35,12 +35,8 @@ class RelazioneProvider with ChangeNotifier {
   Future<void> salvaDatiInAutomatico() async {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
-      'referente': referente,
-      'comune': comune,
-      'provincia': provincia,
-      'cap': cap,
-      'viaCivico': viaCivico,
-      'problematiche': problematiche, // Salva le foto nel JSON
+      'referente': referente, 'comune': comune, 'provincia': provincia, 'cap': cap, 'viaCivico': viaCivico,
+      'problematiche': problematiche,
     };
     await prefs.setString('bozza_corrente', jsonEncode(dati));
     notifyListeners();
@@ -55,18 +51,46 @@ class RelazioneProvider with ChangeNotifier {
     salvaDatiInAutomatico();
   }
 
-  // NUOVO: Metodo per aggiungere una foto scattata
-  void aggiungiProblematica(String pathFoto, String tipologia, String nota) {
-    problematiche.add({
-      'path': pathFoto,
-      'tipologia': tipologia,
-      'nota': nota,
-    });
-    salvaDatiInAutomatico();
+  // NUOVO: Salva fisicamente la foto in una cartella Giorno_Cantiere
+  Future<void> aggiungiProblematica(String pathFoto, String tipologia, String nota) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final dataOggi = DateTime.now().toIso8601String().split('T')[0]; // Es: 2026-03-27
+      final nomeCantiere = comune.isNotEmpty ? comune.replaceAll(' ', '_') : 'Sconosciuto';
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_$nomeCantiere');
+      
+      if (!await cartellaCantiere.exists()) {
+        await cartellaCantiere.create(recursive: true);
+      }
+
+      final estensione = path.extension(pathFoto);
+      final nuovoNomeFile = 'Foto_${DateTime.now().millisecondsSinceEpoch}$estensione';
+      final nuovoPath = '${cartellaCantiere.path}/$nuovoNomeFile';
+
+      await File(pathFoto).copy(nuovoPath);
+
+      problematiche.add({
+        'path': nuovoPath, // Salva il percorso definitivo
+        'tipologia': tipologia,
+        'nota': nota,
+        'cancellata': false, // Di default NON è cancellata
+      });
+      salvaDatiInAutomatico();
+    } catch (e) {
+      print("Errore salvataggio foto: $e");
+    }
   }
   
-  // NUOVO: Metodo per eliminare una foto se sbagliata
-  void rimuoviProblematica(int index) {
+  // NUOVO: Cancellazione morbida (rende la foto trasparente)
+  void impostaCancellata(int index, bool stato) {
+    problematiche[index]['cancellata'] = stato;
+    salvaDatiInAutomatico();
+  }
+
+  // Se vuoi eliminarla definitivamente dopo (opzionale)
+  void eliminaDefinitiva(int index) {
+    // Opzionale: cancella anche il file fisico
+    // File(problematiche[index]['path']).deleteSync();
     problematiche.removeAt(index);
     salvaDatiInAutomatico();
   }
