@@ -7,6 +7,7 @@ import 'problematiche_screen.dart';
 import 'gas_traccianti_screen.dart'; 
 import 'verifiche_strumentali_screen.dart';
 import 'ripristino_iniezioni_screen.dart'; // Import per la nuova Sezione 5
+import 'cause_consigli_screen.dart'; // Importa la Sezione 7
 
 class DatiCantiereScreen extends StatefulWidget {
   const DatiCantiereScreen({super.key});
