@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 class RelazioneProvider with ChangeNotifier {
+  String dataSopralluogo = ''; // NUOVO CAMPO
   String referente = 'Sig.';
   String comune = '';
   String provincia = '';
