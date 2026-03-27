@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../widgets/casella_testo_vocale.dart';
 import '../providers/relazione_provider.dart';
+import 'gas_traccianti_screen.dart'; // Import necessario per andare avanti
 
 class ProblematicheScreen extends StatefulWidget {
   const ProblematicheScreen({super.key});
@@ -17,15 +18,13 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
   
   int _indiceSelezionato = 0; 
 
-    Future<void> _scattaFoto() async {
+  Future<void> _scattaFoto() async {
     final XFile? foto = await _picker.pickImage(source: ImageSource.camera);
     if (foto == null) return; 
 
     if (!mounted) return;
     String tipologiaSelezionata = 'Infiltrazione';
     String notaInserita = '';
-    
-    // Nuove variabili per le spunte veloci
     bool infiltrazioneAttiva = false;
     bool presenzaAcquaPiove = false;
 
@@ -33,7 +32,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return StatefulBuilder( // StatefulBuilder permette di aggiornare le Checkbox dentro al popup!
+        return StatefulBuilder(
           builder: (context, setStatePopup) {
             return AlertDialog(
               title: const Text('Dettagli Infiltrazione'),
@@ -50,8 +49,6 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
                       decoration: const InputDecoration(labelText: 'Tipologia problema'),
                     ),
                     const SizedBox(height: 8),
-                    
-                    // NUOVE SPUNTE VELOCI
                     CheckboxListTile(
                       title: const Text("Infiltrazione attiva"),
                       value: infiltrazioneAttiva,
@@ -67,7 +64,6 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
                       contentPadding: EdgeInsets.zero,
                     ),
                     const SizedBox(height: 8),
-
                     CasellaTestoVocale(
                       label: 'Note aggiuntive / Stanza',
                       valoreIniziale: notaInserita,
@@ -80,7 +76,6 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
                 ElevatedButton(
                   onPressed: () {
-                    // Costruiamo la nota finale unendo le spunte al testo vocale
                     String notaFinale = notaInserita;
                     if (infiltrazioneAttiva) notaFinale = "[ATTIVA] $notaFinale";
                     if (presenzaAcquaPiove) notaFinale = "[PIOVE] $notaFinale";
@@ -112,7 +107,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('2. Aree Infiltrazioni')),
       body: list.isEmpty 
-        ? const Center(child: Text('Nessuna foto inserita.\nPremi il tasto in basso per scattare.', textAlign: TextAlign.center))
+        ? const Center(child: Text('Nessuna foto inserita.\nPremi il tasto in basso.', textAlign: TextAlign.center))
         : Column(
             children: [
               Expanded(
@@ -196,6 +191,25 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
         onPressed: _scattaFoto,
         icon: const Icon(Icons.camera_alt),
         label: const Text('Scatta Foto'),
+      ),
+      // BARRA NAVIGAZIONE INFERIORE CORRETTA
+      bottomNavigationBar: BottomNavigationBar(
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.arrow_back), label: '1. Dati Gen.'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.arrow_forward), label: '3. Gas Tracc.'),
+        ],
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pop(context); // Torna alla pagina 1
+          } else if (index == 1) {
+            Navigator.of(context).popUntil((route) => route.isFirst); // Torna alla primissima pagina (Home)
+          } else if (index == 2) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GasTracciantiScreen())); // Va alla pagina 3
+          }
+        },
       ),
     );
   }
