@@ -1,168 +1,179 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:pattern_input_formatter/pattern_input_formatter.dart';
-import '../providers/relazione_provider.dart';
-import 'problematiche_screen.dart';
-import 'gas_traccianti_screen.dart'; 
-import 'verifiche_strumentali_screen.dart';
-import 'ripristino_iniezioni_screen.dart'; 
-import 'vulnerabilita_screen.dart';
-import 'cause_consigli_screen.dart'; // <--- IMPORT SEZIONE 7 NUOVO
 
 class DatiCantiereScreen extends StatefulWidget {
   const DatiCantiereScreen({super.key});
+
   @override
   State<DatiCantiereScreen> createState() => _DatiCantiereScreenState();
 }
 
 class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
-  final List<String> _titoliReferente = ['Sig.', 'Sig.ra', 'Ing.', 'Arch.', 'Geom.', 'Amministratore', 'Altro'];
-  final List<String> _tipiEdificio = ['Condominio', 'Abitazione singola', 'Box auto', 'Edificio Commerciale', 'Edificio Industriale', 'Altro'];
-  final List<String> _anniEdificio = List.generate(127, (index) => (2026 - index).toString());
-  
-  final List<Map<String, String>> _databaseComuni = [
-    {'comune': 'Vicenza', 'provincia': 'VI', 'cap': '36100'},
-    {'comune': 'Verona', 'provincia': 'VR', 'cap': '37100'},
-    {'comune': 'Padova', 'provincia': 'PD', 'cap': '35100'},
-    {'comune': 'Venezia', 'provincia': 'VE', 'cap': '30100'},
-    {'comune': 'Treviso', 'provincia': 'TV', 'cap': '31100'},
-    {'comune': 'Rovigo', 'provincia': 'RO', 'cap': '45100'},
-    {'comune': 'Belluno', 'provincia': 'BL', 'cap': '32100'},
-    {'comune': 'Bassano del Grappa', 'provincia': 'VI', 'cap': '36061'},
-    {'comune': 'Schio', 'provincia': 'VI', 'cap': '36015'},
+  // Generiamo la lista degli orari dalle 07:00 alle 20:00 a scatti di 30 minuti
+  final List<String> _orariDisponibili = [
+    '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', 
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+    '19:00', '19:30', '20:00'
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final p = Provider.of<RelazioneProvider>(context, listen: false);
-      if (p.dataSopralluogo.isEmpty) p.aggiornaData("${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}");
-    });
-  }
+  String _orarioArrivo = '08:00';
+  String _orarioPartenza = '17:00';
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<RelazioneProvider>(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('1. Dati Generali'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download),
-            tooltip: 'Importa Backup JSON',
-            onPressed: () => provider.importaBackup(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: 'Invia Backup JSON',
-            onPressed: () => provider.esportaBackup(),
-          )
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            const DrawerHeader(decoration: BoxDecoration(color: Colors.blueAccent), child: Text('Fasi Sopralluogo', style: TextStyle(color: Colors.white, fontSize: 24))),
-            ListTile(leading: const Icon(Icons.folder), title: const Text('Archivio Sopralluoghi'), onTap: () {}),
-            const Divider(),
-            ListTile(leading: const Icon(Icons.looks_one), title: const Text('1) Dati generali'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.looks_two), title: const Text('2) Aree infiltrazioni'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ProblematicheScreen()));
-            }),
-            ListTile(leading: const Icon(Icons.looks_3), title: const Text('3) Localizz. gas tracciante'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const GasTracciantiScreen()));
-            }),
-            ListTile(leading: const Icon(Icons.looks_4), title: const Text('4) Verifiche strumentali'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificheStrumentaliScreen()));
-            }),
-            ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const RipristinoIniezioniScreen()));
-            }),
-            ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VulnerabilitaScreen()));
-            }),
-            // COLLEGAMENTO SEZIONE 7 AGGIORNATO!
-            ListTile(leading: const Icon(Icons.looks_7), title: const Text('7) Cause e Consigli (Note)'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const CauseConsigliScreen()));
-            }),
-            const Divider(),
-            ListTile(leading: const Icon(Icons.restaurant), title: const Text('Foto Pranzo/Cena/Hotel'), onTap: () {}),
-            ListTile(leading: const Icon(Icons.picture_as_pdf), title: const Text('Genera PDF / Word'), onTap: () {}),
-          ],
-        ),
+        title: const Text('1. Dati Cantiere e Menu'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-                Expanded(child: TextFormField(key: Key(provider.dataSopralluogo), initialValue: provider.dataSopralluogo, decoration: const InputDecoration(labelText: 'Data Inizio', border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today)), onChanged: (val) => provider.aggiornaData(val))),
-                const SizedBox(width: 16),
-                Expanded(child: DropdownButtonFormField<String>(value: provider.durataGiorni, items: ['Mezza giornata', '1 Giorno', '2 Giorni', '3 Giorni', 'Altro'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) => provider.aggiornaDato(nuovaDurata: val), decoration: const InputDecoration(labelText: 'Durata', border: OutlineInputBorder()))),
-            ]),
-            const SizedBox(height: 16),
-            Row(children: [
-                Expanded(child: TextFormField(keyboardType: TextInputType.number, inputFormatters: [PatternInputFormatter(pattern: '##:##')], decoration: const InputDecoration(labelText: 'Orario Inizio', hintText: '09:00', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time)))),
-                const SizedBox(width: 16),
-                Expanded(child: TextFormField(keyboardType: TextInputType.number, inputFormatters: [PatternInputFormatter(pattern: '##:##')], decoration: const InputDecoration(labelText: 'Orario Fine', hintText: '17:30', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time)))),
-            ]),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(value: _titoliReferente.contains(provider.referente) ? provider.referente : 'Sig.', items: _titoliReferente.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) => provider.aggiornaDato(nuovoReferente: val), decoration: const InputDecoration(labelText: 'Referente', border: OutlineInputBorder())),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(flex: 2, child: DropdownButtonFormField<String>(value: 'Condominio', items: _tipiEdificio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Tipo Edificio', border: OutlineInputBorder()))),
-              const SizedBox(width: 16),
-              Expanded(flex: 1, child: DropdownButtonFormField<String>(value: '2026', items: _anniEdificio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Anno', border: OutlineInputBorder()))),
-            ]),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: TextFormField(keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Piani f.t.', border: OutlineInputBorder()))),
-              const SizedBox(width: 8),
-              Expanded(child: TextFormField(keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Piani interrati', border: OutlineInputBorder()))),
-            ]),
-            const SizedBox(height: 16),
-            TextFormField(decoration: const InputDecoration(labelText: 'Interventi manutenzione precedenti', border: OutlineInputBorder())),
-            const SizedBox(height: 16),
-            Autocomplete<Map<String, String>>(
-              initialValue: TextEditingValue(text: provider.comune),
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text.isEmpty) return const Iterable<Map<String, String>>.empty();
-                return _databaseComuni.where((c) => c['comune']!.toLowerCase().startsWith(textEditingValue.text.toLowerCase()));
-              },
-              displayStringForOption: (option) => option['comune']!,
-              onSelected: (Map<String, String> selezione) { provider.aggiornaDato(nuovoComune: selezione['comune'], nuovaProvincia: selezione['provincia'], nuovoCap: selezione['cap']); setState(() {}); },
-              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) { return TextField(controller: controller, focusNode: focusNode, decoration: const InputDecoration(labelText: 'Comune (Solo Veneto)', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovoComune: val)); },
+            // --- SEZIONE DATI GENERALI ---
+            const Text(
+              'Informazioni Generali', 
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
             ),
             const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: TextFormField(key: Key(provider.provincia), initialValue: provider.provincia, decoration: const InputDecoration(labelText: 'Provincia', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovaProvincia: val))),
-              const SizedBox(width: 16),
-              Expanded(child: TextFormField(key: Key(provider.cap), initialValue: provider.cap, decoration: const InputDecoration(labelText: 'CAP', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovoCap: val))),
-            ]),
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Cliente / Riferimento', 
+                border: OutlineInputBorder(), 
+                prefixIcon: Icon(Icons.person)
+              ),
+            ),
             const SizedBox(height: 16),
-            Row(children: [
-              Expanded(flex: 3, child: TextFormField(initialValue: provider.viaCivico, decoration: const InputDecoration(labelText: 'Via/Piazza', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovaVia: val))),
-              const SizedBox(width: 16),
-              Expanded(flex: 1, child: TextFormField(decoration: const InputDecoration(labelText: 'Civico', border: OutlineInputBorder()))),
-            ]),
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Indirizzo Cantiere', 
+                border: OutlineInputBorder(), 
+                prefixIcon: Icon(Icons.location_on)
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // --- SEZIONE ORARI CON MENU A TENDINA ---
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _orarioArrivo,
+                    decoration: const InputDecoration(
+                      labelText: 'Orario Arrivo',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.access_time),
+                    ),
+                    items: _orariDisponibili.map((String orario) {
+                      return DropdownMenuItem<String>(
+                        value: orario,
+                        child: Text(orario),
+                      );
+                    }).toList(),
+                    onChanged: (String? nuovoValore) {
+                      setState(() {
+                        if (nuovoValore != null) _orarioArrivo = nuovoValore;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _orarioPartenza,
+                    decoration: const InputDecoration(
+                      labelText: 'Orario Partenza',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.access_time),
+                    ),
+                    items: _orariDisponibili.map((String orario) {
+                      return DropdownMenuItem<String>(
+                        value: orario,
+                        child: Text(orario),
+                      );
+                    }).toList(),
+                    onChanged: (String? nuovoValore) {
+                      setState(() {
+                        if (nuovoValore != null) _orarioPartenza = nuovoValore;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+
+            // --- SEZIONE MENU NAVIGAZIONE ---
+            const Text(
+              'Navigazione Sezioni', 
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+            ),
+            const SizedBox(height: 16),
+            
+            Card(
+              elevation: 2,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.looks_two, color: Colors.blue), 
+                    title: const Text('2) Aree Infiltrazioni'), 
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16), 
+                    onTap: () => Navigator.pushNamed(context, '/problematiche')
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.looks_3, color: Colors.blue), 
+                    title: const Text('3) Ricerca Gas Tracciante'), 
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16), 
+                    onTap: () => Navigator.pushNamed(context, '/gas_screen')
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.looks_4, color: Colors.blue), 
+                    title: const Text('4) Igrometria e Umidità'), 
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16), 
+                    onTap: () => Navigator.pushNamed(context, '/igrometria_screen')
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.looks_5, color: Colors.blue), 
+                    title: const Text('5) Termografia'), 
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16), 
+                    onTap: () => Navigator.pushNamed(context, '/termografia_screen')
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.looks_6, color: Colors.blue), 
+                    title: const Text('6) Vulnerabilità'), 
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16), 
+                    onTap: () => Navigator.pushNamed(context, '/vulnerabilita_screen')
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.assignment, color: Colors.blue), 
+                    title: const Text('7) Cause e Consigli (Note)'), 
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16), 
+                    onTap: () => Navigator.pushNamed(context, '/cause_consigli')
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.block, color: Colors.transparent), label: ''), 
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.arrow_forward), label: '2. Infiltrazioni'),
+          BottomNavigationBarItem(icon: Icon(Icons.arrow_forward), label: 'Avanti'),
         ],
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
         onTap: (index) {
-          if (index == 2) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProblematicheScreen()));
-          }
+          if (index == 0) Navigator.of(context).popUntil((route) => route.isFirst);
+          if (index == 1) Navigator.pushNamed(context, '/problematiche');
         },
       ),
     );
