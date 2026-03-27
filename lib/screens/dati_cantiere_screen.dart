@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pattern_input_formatter/pattern_input_formatter.dart';
 import '../providers/relazione_provider.dart';
 import 'problematiche_screen.dart';
 import 'gas_traccianti_screen.dart'; 
-import 'verifiche_strumentali_screen.dart'; // Import per la Sezione 4
+import 'verifiche_strumentali_screen.dart';
 
 class DatiCantiereScreen extends StatefulWidget {
   const DatiCantiereScreen({super.key});
@@ -14,6 +16,9 @@ class DatiCantiereScreen extends StatefulWidget {
 class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
   final List<String> _titoliReferente = ['Sig.', 'Sig.ra', 'Ing.', 'Arch.', 'Geom.', 'Amministratore', 'Altro'];
   final List<String> _tipiEdificio = ['Condominio', 'Abitazione singola', 'Box auto', 'Edificio Commerciale', 'Edificio Industriale', 'Altro'];
+  
+  // Lista anni dal 2026 fino al 1900
+  final List<String> _anniEdificio = List.generate(127, (index) => (2026 - index).toString());
   
   final List<Map<String, String>> _databaseComuni = [
     {'comune': 'Vicenza', 'provincia': 'VI', 'cap': '36100'},
@@ -50,7 +55,7 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
                 Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const GasTracciantiScreen()));
             }),
             ListTile(leading: const Icon(Icons.looks_4), title: const Text('4) Verifiche strumentali'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificheStrumentaliScreen())); // Collegamento Sezione 4!
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificheStrumentaliScreen()));
             }),
             ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {}),
             ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {}),
@@ -72,16 +77,48 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
                 Expanded(child: DropdownButtonFormField<String>(value: '1 Giorno', items: ['Mezza giornata', '1 Giorno', '2 Giorni', '3 Giorni', 'Altro'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Durata', border: OutlineInputBorder()))),
             ]),
             const SizedBox(height: 16),
+            
+            // ORARIO AUTOFORMATTATO
             Row(children: [
-                Expanded(child: TextFormField(decoration: const InputDecoration(labelText: 'Orario Inizio', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time)))),
+                Expanded(
+                  child: TextFormField(
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [PatternInputFormatter(pattern: '##:##')], // Formatta in automatico es. 09:30
+                    decoration: const InputDecoration(labelText: 'Orario Inizio', hintText: '09:00', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time))
+                  )
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: TextFormField(decoration: const InputDecoration(labelText: 'Orario Fine', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time)))),
+                Expanded(
+                  child: TextFormField(
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [PatternInputFormatter(pattern: '##:##')],
+                    decoration: const InputDecoration(labelText: 'Orario Fine', hintText: '17:30', border: OutlineInputBorder(), prefixIcon: Icon(Icons.access_time))
+                  )
+                ),
             ]),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(value: 'Condominio', items: _tipiEdificio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Tipologia Edificio', border: OutlineInputBorder())),
-            const SizedBox(height: 16),
+            
             DropdownButtonFormField<String>(value: _titoliReferente.contains(provider.referente) ? provider.referente : 'Sig.', items: _titoliReferente.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) => provider.aggiornaDato(nuovoReferente: val), decoration: const InputDecoration(labelText: 'Referente', border: OutlineInputBorder())),
             const SizedBox(height: 16),
+
+            // DATI EDIFICIO E ANNO
+            Row(children: [
+              Expanded(flex: 2, child: DropdownButtonFormField<String>(value: 'Condominio', items: _tipiEdificio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Tipo Edificio', border: OutlineInputBorder()))),
+              const SizedBox(width: 16),
+              Expanded(flex: 1, child: DropdownButtonFormField<String>(value: '2026', items: _anniEdificio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) {}, decoration: const InputDecoration(labelText: 'Anno', border: OutlineInputBorder()))),
+            ]),
+            const SizedBox(height: 16),
+
+            // PIANI E MANUTENZIONE
+            Row(children: [
+              Expanded(child: TextFormField(keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Piani f.t.', border: OutlineInputBorder()))),
+              const SizedBox(width: 8),
+              Expanded(child: TextFormField(keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Piani interrati', border: OutlineInputBorder()))),
+            ]),
+            const SizedBox(height: 16),
+            TextFormField(decoration: const InputDecoration(labelText: 'Interventi manutenzione precedenti (es. guaina 2020)', border: OutlineInputBorder())),
+            const SizedBox(height: 16),
+
             Autocomplete<Map<String, String>>(
               initialValue: TextEditingValue(text: provider.comune),
               optionsBuilder: (TextEditingValue textEditingValue) {
@@ -99,7 +136,13 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
               Expanded(child: TextFormField(key: Key(provider.cap), initialValue: provider.cap, decoration: const InputDecoration(labelText: 'CAP', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovoCap: val))),
             ]),
             const SizedBox(height: 16),
-            TextFormField(initialValue: provider.viaCivico, decoration: const InputDecoration(labelText: 'Via e Civico', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovaVia: val)),
+
+            // VIA E CIVICO SEPARATI
+            Row(children: [
+              Expanded(flex: 3, child: TextFormField(initialValue: provider.viaCivico, decoration: const InputDecoration(labelText: 'Via/Piazza', border: OutlineInputBorder()), onChanged: (val) => provider.aggiornaDato(nuovaVia: val))),
+              const SizedBox(width: 16),
+              Expanded(flex: 1, child: TextFormField(decoration: const InputDecoration(labelText: 'Civico', border: OutlineInputBorder()))),
+            ]),
           ],
         ),
       ),
