@@ -6,7 +6,6 @@ import '../providers/relazione_provider.dart';
 
 class ProblematicheScreen extends StatefulWidget {
   const ProblematicheScreen({super.key});
-
   @override
   State<ProblematicheScreen> createState() => _ProblematicheScreenState();
 }
@@ -14,6 +13,8 @@ class ProblematicheScreen extends StatefulWidget {
 class _ProblematicheScreenState extends State<ProblematicheScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<String> _tipologie = ['Altro', 'Distacco intonaco', 'Infiltrazione', 'Macchia', 'Muffa', 'Perdita', 'Rigonfiamento', 'Termografia', 'Umidità di risalita'];
+  
+  int _indiceSelezionato = 0; // Tiene traccia di quale foto è al centro grande
 
   Future<void> _scattaFoto() async {
     final XFile? foto = await _picker.pickImage(source: ImageSource.camera);
@@ -28,7 +29,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Dettagli Rilevamento'),
+          title: const Text('Dettagli Infiltrazione'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -43,7 +44,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Note aggiuntive (opzionale)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Note aggiuntive / Stanza', border: OutlineInputBorder()),
                   maxLines: 3,
                   onChanged: (val) => notaInserita = val,
                 ),
@@ -54,8 +55,9 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
             ElevatedButton(
               onPressed: () {
-                Provider.of<RelazioneProvider>(context, listen: false)
-                    .aggiungiProblematica(foto.path, tipologiaSelezionata, notaInserita);
+                final prov = Provider.of<RelazioneProvider>(context, listen: false);
+                prov.aggiungiProblematica(foto.path, tipologiaSelezionata, notaInserita);
+                setState(() { _indiceSelezionato = prov.problematiche.length - 1; }); // Mostra l'ultima foto scattata
                 Navigator.pop(context);
               },
               child: const Text('Salva Foto'),
@@ -70,48 +72,97 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<RelazioneProvider>(context);
     final list = provider.problematiche;
+    
+    // Sicurezza se elimino foto e l'indice sfora
+    if (_indiceSelezionato >= list.length && list.isNotEmpty) {
+      _indiceSelezionato = list.length - 1;
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Problematiche Segnalate')),
+      appBar: AppBar(title: const Text('2. Aree Infiltrazioni')),
       body: list.isEmpty 
         ? const Center(child: Text('Nessuna foto inserita.\nPremi il tasto in basso per scattare.', textAlign: TextAlign.center))
-        : ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              final item = list[index];
-              final bool isCancellata = item['cancellata'] ?? false;
-
-              return Card(
-                color: isCancellata ? Colors.grey.shade300 : Colors.white,
-                margin: const EdgeInsets.all(8.0),
-                child: Opacity(
-                  opacity: isCancellata ? 0.4 : 1.0, // Effetto trasparenza!
-                  child: ListTile(
-                    leading: Image.file(File(item['path']), width: 60, height: 60, fit: BoxFit.cover),
-                    title: Text(
-                      isCancellata ? 'CANCELLATA - ${item['tipologia']}' : item['tipologia'], 
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        decoration: isCancellata ? TextDecoration.lineThrough : null, // Riga sopra il testo
-                        color: isCancellata ? Colors.red : Colors.black
-                      )
-                    ),
-                    subtitle: Text(item['nota']),
-                    trailing: isCancellata
-                      ? IconButton(
-                          icon: const Icon(Icons.restore, color: Colors.green),
-                          tooltip: 'Ripristina',
-                          onPressed: () => provider.impostaCancellata(index, false),
-                        )
-                      : IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          tooltip: 'Elimina',
-                          onPressed: () => provider.impostaCancellata(index, true),
+        : Column(
+            children: [
+              // PARTE SUPERIORE: FOTO GRANDE
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Card(
+                    elevation: 4,
+                    color: (list[_indiceSelezionato]['cancellata'] ?? false) ? Colors.grey.shade300 : Colors.white,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: Opacity(
+                            opacity: (list[_indiceSelezionato]['cancellata'] ?? false) ? 0.3 : 1.0,
+                            child: Image.file(File(list[_indiceSelezionato]['path']), fit: BoxFit.contain)
+                          ),
                         ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Foto #${_indiceSelezionato + 1} - ${list[_indiceSelezionato]['tipologia']}", 
+                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, decoration: (list[_indiceSelezionato]['cancellata'] ?? false) ? TextDecoration.lineThrough : null)
+                                    ),
+                                    Text(list[_indiceSelezionato]['nota']),
+                                  ],
+                                ),
+                              ),
+                              (list[_indiceSelezionato]['cancellata'] ?? false)
+                                ? IconButton(icon: const Icon(Icons.restore, color: Colors.green, size: 30), onPressed: () => provider.impostaCancellata(_indiceSelezionato, false))
+                                : IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 30), onPressed: () => provider.impostaCancellata(_indiceSelezionato, true)),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
-              );
-            },
+              ),
+              
+              // PARTE INFERIORE: RULLINO FOTO (Slider orizzontale)
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    final isCancellata = item['cancellata'] ?? false;
+                    final isSelezionata = index == _indiceSelezionato;
+                    
+                    return GestureDetector(
+                      onTap: () => setState(() => _indiceSelezionato = index),
+                      child: Container(
+                        width: 80,
+                        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: isSelezionata ? Colors.blue : Colors.transparent, width: 3),
+                          borderRadius: BorderRadius.circular(8)
+                        ),
+                        child: Opacity(
+                          opacity: isCancellata ? 0.3 : 1.0,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5),
+                            child: Image.file(File(item['path']), fit: BoxFit.cover),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            ],
           ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _scattaFoto,
