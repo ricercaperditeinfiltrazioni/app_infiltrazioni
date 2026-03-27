@@ -6,8 +6,9 @@ import '../providers/relazione_provider.dart';
 import 'problematiche_screen.dart';
 import 'gas_traccianti_screen.dart'; 
 import 'verifiche_strumentali_screen.dart';
-import 'ripristino_iniezioni_screen.dart'; // Import per la nuova Sezione 5
-import 'cause_consigli_screen.dart'; // Importa la Sezione 7
+import 'ripristino_iniezioni_screen.dart'; 
+import 'vulnerabilita_screen.dart';
+import 'cause_consigli_screen.dart'; // <--- IMPORT SEZIONE 7 NUOVO
 
 class DatiCantiereScreen extends StatefulWidget {
   const DatiCantiereScreen({super.key});
@@ -52,12 +53,12 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
           IconButton(
             icon: const Icon(Icons.file_download),
             tooltip: 'Importa Backup JSON',
-            onPressed: () => provider.importaBackup(), // Tasto per importare
+            onPressed: () => provider.importaBackup(),
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            tooltip: 'Invia Backup (Telegram/WhatsApp)',
-            onPressed: () => provider.esportaBackup(), // Tasto per esportare
+            tooltip: 'Invia Backup JSON',
+            onPressed: () => provider.esportaBackup(),
           )
         ],
       ),
@@ -78,10 +79,15 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
                 Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VerificheStrumentaliScreen()));
             }),
             ListTile(leading: const Icon(Icons.looks_5), title: const Text('5) Ripristino iniezioni'), onTap: () {
-                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const RipristinoIniezioniScreen())); // Collegamento Sezione 5
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const RipristinoIniezioniScreen()));
             }),
-            ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {}),
-            ListTile(leading: const Icon(Icons.looks_3, color: Colors.transparent), title: const Text('7) Cause e Consigli (Note)'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.looks_6), title: const Text('6) Potenziali vulnerabilità'), onTap: () {
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const VulnerabilitaScreen()));
+            }),
+            // COLLEGAMENTO SEZIONE 7 AGGIORNATO!
+            ListTile(leading: const Icon(Icons.looks_7), title: const Text('7) Cause e Consigli (Note)'), onTap: () {
+                Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const CauseConsigliScreen()));
+            }),
             const Divider(),
             ListTile(leading: const Icon(Icons.restaurant), title: const Text('Foto Pranzo/Cena/Hotel'), onTap: () {}),
             ListTile(leading: const Icon(Icons.picture_as_pdf), title: const Text('Genera PDF / Word'), onTap: () {}),
@@ -95,7 +101,6 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
             Row(children: [
                 Expanded(child: TextFormField(key: Key(provider.dataSopralluogo), initialValue: provider.dataSopralluogo, decoration: const InputDecoration(labelText: 'Data Inizio', border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today)), onChanged: (val) => provider.aggiornaData(val))),
                 const SizedBox(width: 16),
-                // LA DURATA ORA COMANDA QUANTI GIORNI VEDI NELLE FOTO
                 Expanded(child: DropdownButtonFormField<String>(value: provider.durataGiorni, items: ['Mezza giornata', '1 Giorno', '2 Giorni', '3 Giorni', 'Altro'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(), onChanged: (val) => provider.aggiornaDato(nuovaDurata: val), decoration: const InputDecoration(labelText: 'Durata', border: OutlineInputBorder()))),
             ]),
             const SizedBox(height: 16),
