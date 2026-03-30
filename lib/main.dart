@@ -35,9 +35,9 @@ class AppInfiltrazioni extends StatelessWidget {
       routes: {
         '/dati_cantiere':        (ctx) => const DatiCantiereScreen(),
         '/problematiche':        (ctx) => const ProblematicheScreen(),
-        '/gas_screen':           (ctx) => const GasTraccianiScreen(),
+        '/gas_screen':           (ctx) => GasTraccianiScreen(),
         '/igrometria_screen':    (ctx) => const VerificheStrumentaliScreen(),
-        '/termografia_screen':   (ctx) => const RipristoIniezioniScreen(),
+        '/termografia_screen':   (ctx) => RipristoIniezioniScreen(),
         '/vulnerabilita_screen': (ctx) => const VulnerabilitaScreen(),
         '/cause_consigli':       (ctx) => const CauseConsigliScreen(),
       },
