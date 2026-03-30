@@ -37,7 +37,7 @@ class AppInfiltrazioni extends StatelessWidget {
         '/problematiche':        (ctx) => const ProblematicheScreen(),
         '/gas_screen':           (ctx) => GasTracciantiScreen(),
         '/igrometria_screen':    (ctx) => const VerificheStrumentaliScreen(),
-        '/termografia_screen':   (ctx) => RipristoIniezioniScreen(),
+        '/termografia_screen':   (ctx) => RipristinoIniezioniScreen(),
         '/vulnerabilita_screen': (ctx) => const VulnerabilitaScreen(),
         '/cause_consigli':       (ctx) => const CauseConsigliScreen(),
       },
