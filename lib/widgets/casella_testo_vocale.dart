@@ -5,12 +5,14 @@ class CasellaTestoVocale extends StatefulWidget {
   final String label;
   final String valoreIniziale;
   final Function(String) onChanged;
+  final int maxLines;
 
   const CasellaTestoVocale({
     super.key,
     required this.label,
     required this.valoreIniziale,
     required this.onChanged,
+    this.maxLines = 3,
   });
 
   @override
@@ -52,20 +54,10 @@ class _CasellaTestoVocaleState extends State<CasellaTestoVocale> {
         localeId: 'it_IT',
         onResult: (result) {
           final testo = result.recognizedWords;
-          final cursore = _controller.selection;
           final vecchio = _controller.text;
-          
-          // Inserisce il testo dettato nella posizione del cursore
-          final nuovoTesto = cursore.isValid && cursore.baseOffset >= 0
-              ? vecchio.substring(0, cursore.baseOffset) + 
-                testo + 
-                vecchio.substring(cursore.extentOffset)
-              : vecchio + (vecchio.isNotEmpty ? ' ' : '') + testo;
-
+          final nuovoTesto = vecchio.isNotEmpty ? '$vecchio $testo' : testo;
           _controller.text = nuovoTesto;
-          _controller.selection = TextSelection.collapsed(
-            offset: nuovoTesto.length,
-          );
+          _controller.selection = TextSelection.collapsed(offset: nuovoTesto.length);
           widget.onChanged(nuovoTesto);
         },
       );
@@ -97,7 +89,7 @@ class _CasellaTestoVocaleState extends State<CasellaTestoVocale> {
               )
             : null,
       ),
-      maxLines: 3,
+      maxLines: widget.maxLines,
       onChanged: widget.onChanged,
     );
   }
