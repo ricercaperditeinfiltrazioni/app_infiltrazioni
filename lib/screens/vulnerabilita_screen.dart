@@ -192,7 +192,8 @@ class _VulnerabilitaScreenState extends State<VulnerabilitaScreen> {
           } else if (index == 1) {
             Navigator.of(context).popUntil((route) => route.isFirst); // Torna alla home
           } else if (index == 2) {
-            // Qui poi collegheremo la pagina 7
+  Navigator.pushNamed(context, '/cause_consigli');
+},
           }
         },
       ),
