@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 class CasellaTestoVocale extends StatefulWidget {
   final String label;
   final String valoreIniziale;
-  final ValueChanged<String> onChanged;
-  final int maxLines;
+  final Function(String) onChanged;
 
   const CasellaTestoVocale({
     super.key,
     required this.label,
     required this.valoreIniziale,
     required this.onChanged,
-    this.maxLines = 3,
   });
 
   @override
@@ -20,29 +19,85 @@ class CasellaTestoVocale extends StatefulWidget {
 
 class _CasellaTestoVocaleState extends State<CasellaTestoVocale> {
   late TextEditingController _controller;
+  final SpeechToText _speech = SpeechToText();
+  bool _isListening = false;
+  bool _speechAvailable = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.valoreIniziale);
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    final available = await _speech.initialize(
+      onError: (error) => setState(() => _isListening = false),
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+    );
+    setState(() => _speechAvailable = available);
+  }
+
+  void _toggleListening() async {
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+    } else {
+      setState(() => _isListening = true);
+      await _speech.listen(
+        localeId: 'it_IT',
+        onResult: (result) {
+          final testo = result.recognizedWords;
+          final cursore = _controller.selection;
+          final vecchio = _controller.text;
+          
+          // Inserisce il testo dettato nella posizione del cursore
+          final nuovoTesto = cursore.isValid && cursore.baseOffset >= 0
+              ? vecchio.substring(0, cursore.baseOffset) + 
+                testo + 
+                vecchio.substring(cursore.extentOffset)
+              : vecchio + (vecchio.isNotEmpty ? ' ' : '') + testo;
+
+          _controller.text = nuovoTesto;
+          _controller.selection = TextSelection.collapsed(
+            offset: nuovoTesto.length,
+          );
+          widget.onChanged(nuovoTesto);
+        },
+      );
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _speech.stop();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return TextField(
       controller: _controller,
-      maxLines: widget.maxLines,
       decoration: InputDecoration(
         labelText: widget.label,
         border: const OutlineInputBorder(),
-        hintText: 'Scrivi qui o usa il microfono della tastiera...',
+        suffixIcon: _speechAvailable
+            ? IconButton(
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: _isListening ? Colors.red : Colors.grey,
+                ),
+                tooltip: _isListening ? 'Stop dettatura' : 'Dettatura vocale',
+                onPressed: _toggleListening,
+              )
+            : null,
       ),
+      maxLines: 3,
       onChanged: widget.onChanged,
     );
   }
