@@ -227,6 +227,7 @@ class _ProblematicheScreenState extends State<ProblematicheScreen> {
         onTap: (index) {
           if (index == 0) Navigator.pop(context);
           else if (index == 1) Navigator.of(context).popUntil((route) => route.isFirst);
+          else if (index == 2) Navigator.pushNamed(context, '/gas_screen');
         },
       ),
     );
