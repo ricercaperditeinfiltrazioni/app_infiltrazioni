@@ -11,8 +11,8 @@ import 'package:file_picker/file_picker.dart';
 class RelazioneProvider with ChangeNotifier {
   String cantiereId = '';
 
-  String dataSopralluogo = '';
-  DateTime? dataSopralluogoDate;
+  String _dataSopralluogoStringa = '';
+  DateTime? dataSopralluogo;
   String durataGiorni = '1 Giorno';
   String ultimoGiornoSelezionato = 'Giorno 1';
   String referente = 'Sig.';
@@ -35,14 +35,11 @@ class RelazioneProvider with ChangeNotifier {
   List<Map<String, dynamic>> fotoRipristini = [];
   List<Map<String, dynamic>> fotoVulnerabilita = [];
 
-  // Compatibilità con il vecchio DatiCantiereScreen
-  DateTime? get dataSopralluogo2 => dataSopralluogoDate;
-
   void nuovoCantiere() {
     cantiereId = DateTime.now().millisecondsSinceEpoch.toString();
     final now = DateTime.now();
-    dataSopralluogoDate = now;
-    dataSopralluogo = '${now.day}/${now.month}/${now.year}';
+    dataSopralluogo = now;
+    _dataSopralluogoStringa = now.toIso8601String();
     durataGiorni = '1 Giorno';
     ultimoGiornoSelezionato = 'Giorno 1';
     referente = 'Sig.';
@@ -56,7 +53,6 @@ class RelazioneProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Usato dal nuovo DatiCantiereScreen
   void setDatiCantiere({
     required String cliente,
     required String comune,
@@ -77,9 +73,8 @@ class RelazioneProvider with ChangeNotifier {
     this.orarioArrivo = orarioArrivo;
     this.orarioPartenza = orarioPartenza;
     if (dataSopralluogo != null) {
-      dataSopralluogoDate = dataSopralluogo;
-      this.dataSopralluogo =
-          '${dataSopralluogo.day.toString().padLeft(2, '0')}/${dataSopralluogo.month.toString().padLeft(2, '0')}/${dataSopralluogo.year}';
+      this.dataSopralluogo = dataSopralluogo;
+      _dataSopralluogoStringa = dataSopralluogo.toIso8601String();
     }
     salvaDatiInAutomatico();
     notifyListeners();
@@ -92,7 +87,7 @@ class RelazioneProvider with ChangeNotifier {
 
   void _applicaJson(String jsonString) {
     final dati = jsonDecode(jsonString);
-    dataSopralluogo = dati['dataSopralluogo'] ?? '';
+    _dataSopralluogoStringa = dati['dataSopralluogo'] ?? '';
     durataGiorni = dati['durataGiorni'] ?? '1 Giorno';
     ultimoGiornoSelezionato = dati['ultimoGiornoSelezionato'] ?? 'Giorno 1';
     referente = dati['referente'] ?? 'Sig.';
@@ -108,18 +103,23 @@ class RelazioneProvider with ChangeNotifier {
     noteDatiCantiere = dati['noteDatiCantiere'] ?? '';
     noteCauseConsigli = dati['noteCauseConsigli'] ?? '';
 
-    // Ripristina data come DateTime
-    if (dataSopralluogo.isNotEmpty) {
+    // Ripristina data
+    if (_dataSopralluogoStringa.isNotEmpty) {
       try {
-        final parti = dataSopralluogo.split('/');
-        if (parti.length == 3) {
-          dataSopralluogoDate = DateTime(
-            int.parse(parti[2]),
-            int.parse(parti[1]),
-            int.parse(parti[0]),
-          );
-        }
-      } catch (_) {}
+        dataSopralluogo = DateTime.parse(_dataSopralluogoStringa);
+      } catch (_) {
+        // Prova formato dd/MM/yyyy (compatibilità vecchi dati)
+        try {
+          final parti = _dataSopralluogoStringa.split('/');
+          if (parti.length == 3) {
+            dataSopralluogo = DateTime(
+              int.parse(parti[2]),
+              int.parse(parti[1]),
+              int.parse(parti[0]),
+            );
+          }
+        } catch (_) {}
+      }
     }
 
     if (dati['problematiche'] != null)
@@ -131,8 +131,7 @@ class RelazioneProvider with ChangeNotifier {
     if (dati['fotoRipristini'] != null)
       fotoRipristini = List<Map<String, dynamic>>.from(dati['fotoRipristini']);
     if (dati['fotoVulnerabilita'] != null)
-      fotoVulnerabilita =
-          List<Map<String, dynamic>>.from(dati['fotoVulnerabilita']);
+      fotoVulnerabilita = List<Map<String, dynamic>>.from(dati['fotoVulnerabilita']);
     if (dati['fotoCause'] != null)
       fotoCause = List<Map<String, dynamic>>.from(dati['fotoCause']);
     notifyListeners();
@@ -143,7 +142,7 @@ class RelazioneProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final dati = {
       'cantiereId': cantiereId,
-      'dataSopralluogo': dataSopralluogo,
+      'dataSopralluogo': dataSopralluogo?.toIso8601String() ?? _dataSopralluogoStringa,
       'durataGiorni': durataGiorni,
       'ultimoGiornoSelezionato': ultimoGiornoSelezionato,
       'referente': referente,
@@ -165,8 +164,7 @@ class RelazioneProvider with ChangeNotifier {
       'fotoVulnerabilita': fotoVulnerabilita,
       'fotoCause': fotoCause,
     };
-    List<String> listaCantieri =
-        prefs.getStringList('lista_cantieri') ?? [];
+    List<String> listaCantieri = prefs.getStringList('lista_cantieri') ?? [];
     if (!listaCantieri.contains(cantiereId)) {
       listaCantieri.add(cantiereId);
       await prefs.setStringList('lista_cantieri', listaCantieri);
@@ -193,7 +191,7 @@ class RelazioneProvider with ChangeNotifier {
   }
 
   void aggiornaData(String nuovaData) {
-    dataSopralluogo = nuovaData;
+    _dataSopralluogoStringa = nuovaData;
     salvaDatiInAutomatico();
   }
 
@@ -208,21 +206,15 @@ class RelazioneProvider with ChangeNotifier {
   }
 
   Future<void> _salvaFotoGenerico(
-      String pathFoto,
-      String tipologia,
-      String nota,
-      String giorno,
-      List<Map<String, dynamic>> listaDestinazione,
-      String prefisso) async {
+      String pathFoto, String tipologia, String nota, String giorno,
+      List<Map<String, dynamic>> listaDestinazione, String prefisso) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final dataOggi = DateTime.now().toIso8601String().split('T')[0];
-      final cartellaCantiere = Directory(
-          '${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId}');
-      if (!await cartellaCantiere.exists())
-        await cartellaCantiere.create(recursive: true);
-      final nuovoPath =
-          '${cartellaCantiere.path}/${prefisso}_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
+      final nomeCartella = comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId;
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_$nomeCartella');
+      if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
+      final nuovoPath = '${cartellaCantiere.path}/${prefisso}_${DateTime.now().millisecondsSinceEpoch}${path.extension(pathFoto)}';
       await File(pathFoto).copy(nuovoPath);
       listaDestinazione.add({
         'path': nuovoPath,
@@ -233,7 +225,7 @@ class RelazioneProvider with ChangeNotifier {
       });
       salvaDatiInAutomatico();
     } catch (e) {
-      print(e);
+      debugPrint('Errore salvataggio foto: $e');
     }
   }
 
@@ -242,15 +234,12 @@ class RelazioneProvider with ChangeNotifier {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final dataOggi = DateTime.now().toIso8601String().split('T')[0];
-      final cartellaCantiere = Directory(
-          '${directory.path}/${dataOggi}_${comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId}');
-      if (!await cartellaCantiere.exists())
-        await cartellaCantiere.create(recursive: true);
+      final nomeCartella = comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId;
+      final cartellaCantiere = Directory('${directory.path}/${dataOggi}_$nomeCartella');
+      if (!await cartellaCantiere.exists()) await cartellaCantiere.create(recursive: true);
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final pathOrigSalvato =
-          '${cartellaCantiere.path}/CauseOrig_${timestamp}${path.extension(pathOriginale)}';
-      final pathDisegnato =
-          '${cartellaCantiere.path}/CauseDisegno_${timestamp}.png';
+      final pathOrigSalvato = '${cartellaCantiere.path}/CauseOrig_$timestamp${path.extension(pathOriginale)}';
+      final pathDisegnato = '${cartellaCantiere.path}/CauseDisegno_$timestamp.png';
       await File(pathOriginale).copy(pathOrigSalvato);
       await File(pathDisegnato).writeAsBytes(byteDisegnati);
       fotoCause.add({
@@ -262,7 +251,7 @@ class RelazioneProvider with ChangeNotifier {
       });
       salvaDatiInAutomatico();
     } catch (e) {
-      print(e);
+      debugPrint('Errore foto causa: $e');
     }
   }
 
@@ -287,13 +276,10 @@ class RelazioneProvider with ChangeNotifier {
     final datiString = prefs.getString('cantiere_$cantiereId');
     if (datiString != null) {
       final directory = await getTemporaryDirectory();
-      final nomeFile =
-          comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId;
-      final backupFile =
-          File('${directory.path}/backup_$nomeFile.json');
+      final nomeFile = comune.isNotEmpty ? comune.replaceAll(' ', '_') : cantiereId;
+      final backupFile = File('${directory.path}/backup_$nomeFile.json');
       await backupFile.writeAsString(datiString);
-      await Share.shareXFiles(
-          [XFile(backupFile.path)], text: 'Backup Cantiere $comune');
+      await Share.shareXFiles([XFile(backupFile.path)], text: 'Backup Cantiere $comune');
     }
   }
 
