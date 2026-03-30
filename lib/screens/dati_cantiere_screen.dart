@@ -36,7 +36,7 @@ class _DatiCantiereScreenState extends State<DatiCantiereScreen> {
     final provider = Provider.of<RelazioneProvider>(context, listen: false);
     _clienteCtrl.text = provider.cliente;
     _comuneCtrl.text = provider.comune;
-    _indirizzoCtrl.text = provider.indirizzo;
+    _indirizzoCtrl.text = provider.viaCivico;
     _responsabileCtrl.text = provider.responsabile;
     _tecnicoCtrl.text = provider.tecnico;
     _noteCtrl.text = provider.noteDatiCantiere;
